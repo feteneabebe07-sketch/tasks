@@ -29,7 +29,8 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() in ('1', 'true', 'yes')
 
 # Allow hosts from env (comma-separated) or default to localhost for dev
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if h.strip()]
-
+allowed='tasks-3-dbqh.onrender.com'
+ALLOWED_HOSTS+=allowed
 
 # Application definition
 
