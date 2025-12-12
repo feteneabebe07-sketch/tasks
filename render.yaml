@@ -4,7 +4,8 @@ services:
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
-    startCommand: gunicorn project_management.wsgi --log-file -
+    releaseCommand: python manage.py migrate --noinput
+    startCommand: gunicorn project_management.wsgi --bind 0.0.0.0:$PORT --workers 3 --log-file -
     envVars:
       - key: DJANGO_SECRET_KEY
         value: ""
@@ -13,4 +14,8 @@ services:
       - key: DATABASE_URL
         value: ""
       - key: REDIS_URL
+        value: ""
+      - key: DJANGO_ALLOWED_HOSTS
+        value: ""
+      - key: DJANGO_CSRF_TRUSTED_ORIGINS
         value: ""
