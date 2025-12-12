@@ -7,3 +7,4 @@ mysqlclient
 channels
 channels_redis
 redis
+daphne
