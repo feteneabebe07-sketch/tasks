@@ -28,11 +28,14 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-$nee36d7fr2afm
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() in ('1', 'true', 'yes')
 
 # Allow hosts from env (comma-separated) or default to localhost for dev
-ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-    "tasks-3-dbqh.onrender.com",
-]
+import os
+
+ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+
+RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 
 # Application definition
