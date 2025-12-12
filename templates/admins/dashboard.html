@@ -1,0 +1,1253 @@
+{% extends 'admins/base.html' %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block header_title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+    <!-- Quick Stats -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
+        <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 card-hover transition cursor-pointer" onclick="loadStatsDetails('projects')">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-xs md:text-sm">Total Projects</p>
+                    <h3 class="text-xl md:text-2xl font-bold text-ink-black mt-1">{{ total_projects }}</h3>
+                </div>
+                <div class="p-2 md:p-3 bg-dark-teal bg-opacity-10 rounded-lg">
+                    <i class="fas fa-project-diagram text-dark-teal text-lg md:text-xl"></i>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-3 md:mt-4"><span class="text-dark-cyan font-medium">+{{ new_projects_this_month }} this month</span></p>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 card-hover transition cursor-pointer" onclick="loadStatsDetails('employees')">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-xs md:text-sm">Total Employees</p>
+                    <h3 class="text-xl md:text-2xl font-bold text-ink-black mt-1">{{ total_employees }}</h3>
+                </div>
+                <div class="p-2 md:p-3 bg-dark-cyan bg-opacity-10 rounded-lg">
+                    <i class="fas fa-users text-dark-cyan text-lg md:text-xl"></i>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-3 md:mt-4"><span class="text-dark-cyan font-medium">+{{ new_employees_this_month }} this month</span></p>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 card-hover transition cursor-pointer" onclick="loadStatsDetails('pms')">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-xs md:text-sm">Active PMs</p>
+                    <h3 class="text-xl md:text-2xl font-bold text-ink-black mt-1">{{ active_pms }}</h3>
+                </div>
+                <div class="p-2 md:p-3 bg-golden-orange bg-opacity-10 rounded-lg">
+                    <i class="fas fa-user-tie text-golden-orange text-lg md:text-xl"></i>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-3 md:mt-4"><span class="text-dark-cyan font-medium">All assigned</span></p>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 card-hover transition cursor-pointer" onclick="loadStatsDetails('tasks')">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-xs md:text-sm">Pending Tasks</p>
+                    <h3 class="text-xl md:text-2xl font-bold text-ink-black mt-1">{{ pending_tasks }}</h3>
+                </div>
+                <div class="p-2 md:p-3 bg-rusty-spice bg-opacity-10 rounded-lg">
+                    <i class="fas fa-tasks text-rusty-spice text-lg md:text-xl"></i>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-3 md:mt-4"><span class="text-oxidized-iron font-medium">{{ overdue_tasks }} overdue</span></p>
+        </div>
+    </div>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+        <!-- Project Progress -->
+        <div class="lg:col-span-2 bg-white rounded-xl shadow-sm p-4 md:p-6">
+            <div class="flex justify-between items-center mb-4 md:mb-6">
+                <h3 class="text-base md:text-lg font-semibold text-ink-black">Project Progress</h3>
+                <a href="{% url 'admins:projects' %}" class="text-dark-teal text-xs md:text-sm font-medium">View All</a>
+            </div>
+            
+            <div class="space-y-3 md:space-y-4">
+                {% for project in active_projects %}
+                <div class="border-l-4 border-{{ project.color_class }} pl-3 md:pl-4 py-1">
+                    <div class="flex justify-between">
+                        <h4 class="font-medium text-sm md:text-base truncate">{{ project.name }}</h4>
+                        <span class="text-xs md:text-sm font-medium text-{{ project.color_class }}">{{ project.progress }}%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2 mt-1 md:mt-2">
+                        <div class="bg-{{ project.color_class }} h-2 rounded-full progress-bar" style="width: {{ project.progress }}%"></div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1 truncate">PM: {{ project.project_manager.get_full_name|default:"Not Assigned" }} • Due: {{ project.due_date|date:"d M" }}</p>
+                </div>
+                {% empty %}
+                <p class="text-gray-500 text-sm">No active projects</p>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="bg-white rounded-xl shadow-sm p-4 md:p-6">
+            <h3 class="text-base md:text-lg font-semibold text-ink-black mb-4 md:mb-6">Quick Actions</h3>
+            
+            <div class="space-y-3 md:space-y-4">
+                <button onclick="openCreateDepartmentModal()" class="w-full flex items-center justify-between p-3 md:p-4 border border-gray-200 rounded-lg hover:bg-pearl-aqua hover:bg-opacity-10 transition">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-dark-teal bg-opacity-10 rounded-lg mr-2 md:mr-3">
+                            <i class="fas fa-building text-dark-teal text-sm md:text-base"></i>
+                        </div>
+                        <span class="text-sm">Create Department</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                </button>
+                
+                <button onclick="openRegisterEmployeeModal()" class="w-full flex items-center justify-between p-3 md:p-4 border border-gray-200 rounded-lg hover:bg-pearl-aqua hover:bg-opacity-10 transition">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-dark-cyan bg-opacity-10 rounded-lg mr-2 md:mr-3">
+                            <i class="fas fa-user-plus text-dark-cyan text-sm md:text-base"></i>
+                        </div>
+                        <span class="text-sm">Register Employee</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                </button>
+                
+                <button onclick="openCreateProjectModal()" class="w-full flex items-center justify-between p-3 md:p-4 border border-gray-200 rounded-lg hover:bg-pearl-aqua hover:bg-opacity-10 transition">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-golden-orange bg-opacity-10 rounded-lg mr-2 md:mr-3">
+                            <i class="fas fa-project-diagram text-golden-orange text-sm md:text-base"></i>
+                        </div>
+                        <span class="text-sm">Create Project</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                </button>
+                
+                <button onclick="openAssignPMModal()" class="w-full flex items-center justify-between p-3 md:p-4 border border-gray-200 rounded-lg hover:bg-pearl-aqua hover:bg-opacity-10 transition">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-rusty-spice bg-opacity-10 rounded-lg mr-2 md:mr-3">
+                            <i class="fas fa-user-tie text-rusty-spice text-sm md:text-base"></i>
+                        </div>
+                        <span class="text-sm">Assign Project Manager</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                </button>
+                
+                <a href="{% url 'admins:settings' %}" class="w-full flex items-center justify-between p-3 md:p-4 border border-gray-200 rounded-lg hover:bg-pearl-aqua hover:bg-opacity-10 transition">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-oxidized-iron bg-opacity-10 rounded-lg mr-2 md:mr-3">
+                            <i class="fas fa-cog text-oxidized-iron text-sm md:text-base"></i>
+                        </div>
+                        <span class="text-sm">System Settings</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Activity -->
+    <div class="mt-6 md:mt-8 bg-white rounded-xl shadow-sm p-4 md:p-6">
+        <div class="flex justify-between items-center mb-4 md:mb-6">
+            <h3 class="text-base md:text-lg font-semibold text-ink-black">Recent Activity</h3>
+            <a href="{% url 'admins:activity_log' %}" class="text-dark-teal text-xs md:text-sm font-medium">View All</a>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[500px]">
+                <thead>
+                    <tr class="text-left text-gray-500 text-xs md:text-sm border-b">
+                        <th class="pb-2 md:pb-3 font-medium">Action</th>
+                        <th class="pb-2 md:pb-3 font-medium">User</th>
+                        <th class="pb-2 md:pb-3 font-medium">Project</th>
+                        <th class="pb-2 md:pb-3 font-medium">Time</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y">
+                    {% for activity in recent_activities %}
+                    <tr>
+                        <td class="py-2 md:py-3">
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full bg-{{ activity.color_class }} mr-2"></div>
+                                <span class="text-sm">{{ activity.action }}</span>
+                            </div>
+                        </td>
+                        <td class="py-2 md:py-3 text-sm">{{ activity.user.get_full_name }}</td>
+                        <td class="py-2 md:py-3 text-sm truncate max-w-[120px]">{{ activity.project|default:"-" }}</td>
+                        <td class="py-2 md:py-3 text-gray-500 text-sm">{{ activity.created_at|timesince }} ago</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="py-4 text-center text-gray-500">No recent activity</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_modals %}
+<!-- Create Department Modal -->
+<div id="createDepartmentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden modal z-50">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-md shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-base md:text-lg font-medium text-ink-black">Create Department</h3>
+                <button onclick="closeModal('createDepartmentModal')" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="createDepartmentForm" class="mt-4 space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Department Name</label>
+                    <input type="text" name="name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" placeholder="Enter department name" required>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea name="description" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" rows="3" placeholder="Enter department description"></textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Department Manager</label>
+                    <select name="manager" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base">
+                        <option value="">Select a manager</option>
+                        {% for manager in managers %}
+                        <option value="{{ manager.id }}">{{ manager.get_full_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" required>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="archived">Archived</option>
+                    </select>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-4 border-t">
+                    <button type="button" onclick="closeModal('createDepartmentModal')" class="px-3 md:px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition text-sm md:text-base">Cancel</button>
+                    <button type="button" onclick="submitDepartmentForm()" class="px-3 md:px-4 py-2 bg-dark-teal text-white rounded-md hover:bg-dark-cyan transition text-sm md:text-base">Create Department</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Register Employee Modal -->
+<div id="registerEmployeeModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden modal z-50">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-2xl shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-base md:text-lg font-medium text-ink-black">Register Employee</h3>
+                <button onclick="closeModal('registerEmployeeModal')" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="registerEmployeeForm" class="mt-4 space-y-4">
+                {% csrf_token %}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                        <input type="text" name="full_name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" placeholder="Enter full name" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input type="email" name="email" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" placeholder="Enter email address" required>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                        <input type="tel" name="phone" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" placeholder="Enter phone number">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                        <select name="department" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" required>
+                            <option value="">Select department</option>
+                            {% for department in departments %}
+                            <option value="{{ department.id }}">{{ department.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                        <select name="role" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" required>
+                            <option value="">Select role</option>
+                            <option value="admin">Admin</option>
+                            <option value="pm">Project Manager</option>
+                            <option value="developer">Developer</option>
+                            <option value="designer">Designer</option>
+                            <option value="qa">QA Tester</option>
+                            <option value="sales">Sales Executive</option>
+                            <option value="hr">HR Manager</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Job Position</label>
+                        <input type="text" name="position" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" placeholder="Enter job position" required>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Salary</label>
+                        <input type="number" name="salary" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" placeholder="Enter salary" value="0.00">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Join Date</label>
+                        <input type="date" name="join_date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" required>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Skills</label>
+                    <input type="text" name="skills" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" placeholder="Enter skills (comma separated)">
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Emergency Contact</label>
+                        <input type="text" name="emergency_contact" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" placeholder="Emergency contact name and phone">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" required>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="on_leave">On Leave</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                    <textarea name="address" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" rows="2" placeholder="Enter address"></textarea>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-4 border-t">
+                    <button type="button" onclick="closeModal('registerEmployeeModal')" class="px-3 md:px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition text-sm md:text-base">Cancel</button>
+                    <button type="button" onclick="submitEmployeeForm()" class="px-3 md:px-4 py-2 bg-dark-teal text-white rounded-md hover:bg-dark-cyan transition text-sm md:text-base">Register Employee</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Create Project Modal -->
+<div id="createProjectModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden modal z-50">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-2xl shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-base md:text-lg font-medium text-ink-black">Create Project</h3>
+                <button onclick="closeModal('createProjectModal')" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="createProjectForm" class="mt-4 space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Project Title</label>
+                    <input type="text" name="title" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" placeholder="Enter project title" required>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea name="description" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" rows="3" placeholder="Enter project description" required></textarea>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                        <select name="department" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" required>
+                            <option value="">Select department</option>
+                            {% for department in departments %}
+                            <option value="{{ department.id }}">{{ department.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Project Type</label>
+                        <select name="project_type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" required>
+                            <option value="">Select type</option>
+                            <option value="web">Web Application</option>
+                            <option value="mobile">Mobile Application</option>
+                            <option value="research">Research Project</option>
+                            <option value="internal">Internal System</option>
+                            <option value="client">Client Project</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Project Manager</label>
+                        <select name="project_manager" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base">
+                            <option value="">Select project manager</option>
+                            {% for manager in project_managers %}
+                            <option value="{{ manager.id }}">{{ manager.get_full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" required>
+                            <option value="draft">Draft</option>
+                            <option value="active">Active</option>
+                            <option value="on_hold">On Hold</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                        <input type="date" name="start_date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                        <input type="date" name="end_date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" required>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Budget ($)</label>
+                        <input type="number" name="budget" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" placeholder="Enter budget" step="0.01" min="0">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Initial Progress (%)</label>
+                        <input type="number" name="progress" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" placeholder="0-100" min="0" max="100" value="0">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Attach Files</label>
+                    <div class="mt-1 flex justify-center px-4 md:px-6 pt-4 md:pt-5 pb-4 md:pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                        <div class="space-y-1 text-center">
+                            <i class="fas fa-cloud-upload-alt text-gray-400 text-2xl md:text-3xl"></i>
+                            <div class="flex text-xs md:text-sm text-gray-600 flex-col md:flex-row">
+                                <label class="relative cursor-pointer bg-white rounded-md font-medium text-dark-teal hover:text-dark-cyan focus-within:outline-none">
+                                    <span>Upload files</span>
+                                    <input type="file" name="files" class="sr-only" multiple>
+                                </label>
+                                <p class="md:pl-1 mt-1 md:mt-0">or drag and drop</p>
+                            </div>
+                            <p class="text-xs text-gray-500">PDF, DOC, XLS up to 10MB</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-4 border-t">
+                    <button type="button" onclick="closeModal('createProjectModal')" class="px-3 md:px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition text-sm md:text-base">Cancel</button>
+                    <button type="button" onclick="submitProjectForm()" class="px-3 md:px-4 py-2 bg-dark-teal text-white rounded-md hover:bg-dark-cyan transition text-sm md:text-base">Create Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Project Manager Modal -->
+<div id="assignPMModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden modal z-50">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-md shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-base md:text-lg font-medium text-ink-black">Assign Project Manager</h3>
+                <button onclick="closeModal('assignPMModal')" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="assignPMForm" class="mt-4 space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Project</label>
+                    <select name="project_id" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" required>
+                        <option value="">Select project</option>
+                        {% for project in unassigned_projects %}
+                        <option value="{{ project.id }}">{{ project.name }} ({{ project.department.name }})</option>
+                        {% endfor %}
+                    </select>
+                    {% if not unassigned_projects %}
+                    <p class="text-xs text-gray-500 mt-1">All projects have managers assigned</p>
+                    {% endif %}
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Project Manager</label>
+                    <select name="pm_id" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" required>
+                        <option value="">Select project manager</option>
+                        {% for pm in project_managers %}
+                        <option value="{{ pm.id }}">{{ pm.get_full_name }} ({{ pm.employee_profile.department.name|default:"No Department" }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-4 border-t">
+                    <button type="button" onclick="closeModal('assignPMModal')" class="px-3 md:px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition text-sm md:text-base">Cancel</button>
+                    <button type="button" onclick="submitAssignPMForm()" class="px-3 md:px-4 py-2 bg-dark-teal text-white rounded-md hover:bg-dark-cyan transition text-sm md:text-base" {% if not unassigned_projects %}disabled{% endif %}>Assign PM</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Task Modal -->
+<div id="quickTaskModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden modal z-50">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-md shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-base md:text-lg font-medium text-ink-black">Create Quick Task</h3>
+                <button onclick="closeModal('quickTaskModal')" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="quickTaskForm" class="mt-4 space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
+                    <input type="text" name="title" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" placeholder="Enter task title" required>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea name="description" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" rows="2" placeholder="Enter task description"></textarea>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Project</label>
+                        <select name="project_id" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" required>
+                            <option value="">Select project</option>
+                            {% for project in active_projects %}
+                            <option value="{{ project.id }}">{{ project.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Assign To</label>
+                        <select name="assigned_to" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base">
+                            <option value="">Select employee</option>
+                            {% for employee in employees %}
+                            <option value="{{ employee.id }}">{{ employee.user.get_full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                        <select name="priority" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" required>
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                        <input type="date" name="due_date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" required>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Task Type</label>
+                        <select name="task_type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" required>
+                            <option value="feature">Feature</option>
+                            <option value="bug">Bug</option>
+                            <option value="improvement">Improvement</option>
+                            <option value="research">Research</option>
+                            <option value="documentation">Documentation</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Estimated Hours</label>
+                        <input type="number" name="estimated_hours" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" placeholder="Hours" min="0.5" max="100" step="0.5" value="2">
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-4 border-t">
+                    <button type="button" onclick="closeModal('quickTaskModal')" class="px-3 md:px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition text-sm md:text-base">Cancel</button>
+                    <button type="button" onclick="submitQuickTaskForm()" class="px-3 md:px-4 py-2 bg-dark-teal text-white rounded-md hover:bg-dark-cyan transition text-sm md:text-base">Create Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Send Announcement Modal -->
+<div id="sendAnnouncementModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden modal z-50">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-2xl shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-base md:text-lg font-medium text-ink-black">Send Announcement</h3>
+                <button onclick="closeModal('sendAnnouncementModal')" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="sendAnnouncementForm" class="mt-4 space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                    <input type="text" name="subject" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" placeholder="Enter announcement subject" required>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                    <textarea name="content" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" rows="5" placeholder="Enter announcement message" required></textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Recipients</label>
+                    <div class="space-y-2">
+                        <div class="flex items-center">
+                            <input type="checkbox" id="all_employees" name="recipients" value="all" class="h-4 w-4 text-dark-teal focus:ring-dark-teal border-gray-300 rounded">
+                            <label for="all_employees" class="ml-2 block text-sm text-gray-700">All Employees</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="project_managers" name="recipients" value="pms" class="h-4 w-4 text-dark-teal focus:ring-dark-teal border-gray-300 rounded">
+                            <label for="project_managers" class="ml-2 block text-sm text-gray-700">Project Managers Only</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="specific_department" name="recipients" value="department" class="h-4 w-4 text-dark-teal focus:ring-dark-teal border-gray-300 rounded">
+                            <label for="specific_department" class="ml-2 block text-sm text-gray-700">Specific Department</label>
+                            <select name="department_id" class="ml-2 px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm" disabled>
+                                <option value="">Select department</option>
+                                {% for department in departments %}
+                                <option value="{{ department.id }}">{{ department.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                    <div class="flex space-x-4">
+                        <div class="flex items-center">
+                            <input type="radio" id="normal_priority" name="priority" value="normal" checked class="h-4 w-4 text-dark-teal focus:ring-dark-teal border-gray-300">
+                            <label for="normal_priority" class="ml-2 block text-sm text-gray-700">Normal</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="radio" id="high_priority" name="priority" value="high" class="h-4 w-4 text-rusty-spice focus:ring-rusty-spice border-gray-300">
+                            <label for="high_priority" class="ml-2 block text-sm text-gray-700">High Priority</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="radio" id="urgent_priority" name="priority" value="urgent" class="h-4 w-4 text-oxidized-iron focus:ring-oxidized-iron border-gray-300">
+                            <label for="urgent_priority" class="ml-2 block text-sm text-gray-700">Urgent</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center">
+                    <input type="checkbox" id="require_acknowledgement" name="require_acknowledgement" class="h-4 w-4 text-dark-teal focus:ring-dark-teal border-gray-300 rounded">
+                    <label for="require_acknowledgement" class="ml-2 block text-sm text-gray-700">Require acknowledgement from recipients</label>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-4 border-t">
+                    <button type="button" onclick="closeModal('sendAnnouncementModal')" class="px-3 md:px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition text-sm md:text-base">Cancel</button>
+                    <button type="button" onclick="submitAnnouncementForm()" class="px-3 md:px-4 py-2 bg-dark-teal text-white rounded-md hover:bg-dark-cyan transition text-sm md:text-base">Send Announcement</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Details Modal -->
+<div id="statsDetailsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden modal z-50">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-4xl shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-base md:text-lg font-medium text-ink-black" id="statsModalTitle">Stats Details</h3>
+                <button onclick="closeModal('statsDetailsModal')" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="mt-4" id="statsModalContent">
+                <!-- Content will be loaded dynamically -->
+                <div class="text-center py-8">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-dark-teal mx-auto"></div>
+                    <p class="mt-4 text-gray-500">Loading statistics...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Admin API endpoints (use Django reverse)
+    const ADMIN_API_CREATE_DEPARTMENT = "{% url 'admins:api_create_department' %}";
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set default dates in modals
+        const today = new Date().toISOString().split('T')[0];
+        const nextWeek = new Date();
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        const nextWeekStr = nextWeek.toISOString().split('T')[0];
+        
+        // Set due dates
+        document.querySelectorAll('input[type="date"][name="due_date"]').forEach(input => {
+            input.value = nextWeekStr;
+            input.min = today;
+        });
+        
+    // Admin API endpoints
+    const ADMIN_API_DASHBOARD_STATS = "{% url 'admins:api_dashboard_stats' %}";
+    const ADMIN_API_STATS_DETAILS = "{% url 'admins:api_stats_details' '0' %}"; // replace '0' with type
+    const ADMIN_API_CREATE_EMPLOYEE = "{% url 'admins:api_create_employee' %}";
+    const ADMIN_API_CREATE_PROJECT = "{% url 'admins:api_create_project' %}";
+    const ADMIN_API_ASSIGN_PM = "{% url 'admins:api_assign_pm' %}";
+    const ADMIN_API_CREATE_TASK = "{% url 'admins:api_create_task' %}";
+    const ADMIN_API_SEND_ANNOUNCEMENT = "{% url 'admins:api_send_announcement' %}";
+
+        // Set start dates
+        document.querySelectorAll('input[type="date"][name="start_date"]').forEach(input => {
+            input.value = today;
+            input.min = today;
+        });
+        
+        // Set join dates
+        document.querySelectorAll('input[type="date"][name="join_date"]').forEach(input => {
+            input.value = today;
+            input.max = today;
+        });
+        
+        // Update project progress bars with animation
+        setTimeout(() => {
+            document.querySelectorAll('.progress-bar').forEach(bar => {
+                bar.style.transition = 'width 1s ease-in-out';
+            });
+        }, 100);
+        
+        // Initialize department selection for announcements
+        const deptCheckbox = document.getElementById('specific_department');
+        const deptSelect = document.querySelector('select[name="department_id"]');
+        
+        if (deptCheckbox && deptSelect) {
+            deptCheckbox.addEventListener('change', function() {
+                deptSelect.disabled = !this.checked;
+                if (this.checked) {
+                    deptSelect.required = true;
+                } else {
+                    deptSelect.required = false;
+                    deptSelect.value = '';
+                }
+            });
+        }
+        
+        // Poll for updates every 30 seconds
+        setInterval(async () => {
+            try {
+                const response = await fetch(ADMIN_API_DASHBOARD_STATS);
+                if (response.ok) {
+                    const data = await response.json();
+                    // Update stats dynamically
+                    updateDashboardStats(data);
+                }
+            } catch (error) {
+                console.error('Failed to update stats:', error);
+            }
+        }, 30000);
+        
+        // Initialize notification counts
+        updateNotificationCounts();
+    });
+    
+    // Modal opening functions
+    function openCreateDepartmentModal() {
+        document.getElementById('createDepartmentModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function openRegisterEmployeeModal() {
+        document.getElementById('registerEmployeeModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function openCreateProjectModal() {
+        document.getElementById('createProjectModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function openAssignPMModal() {
+        document.getElementById('assignPMModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function openQuickTaskModal() {
+        document.getElementById('quickTaskModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function openSendAnnouncementModal() {
+        document.getElementById('sendAnnouncementModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+    }
+    
+    // Form validation
+    function validateForm(formId) {
+        const form = document.getElementById(formId);
+        if (!form) return true;
+        
+        const requiredFields = form.querySelectorAll('[required]');
+        let isValid = true;
+        
+        requiredFields.forEach(field => {
+            if (!field.value.trim() || (field.type === 'select-one' && field.value === '')) {
+                field.classList.add('border-red-500');
+                isValid = false;
+            } else {
+                field.classList.remove('border-red-500');
+            }
+        });
+        
+        return isValid;
+    }
+    
+    // Form submission functions
+    async function submitDepartmentForm() {
+        if (!validateForm('createDepartmentForm')) {
+            showNotification('Error', 'Please fill in all required fields', 'error');
+            return;
+        }
+        
+        const form = document.getElementById('createDepartmentForm');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        try {
+            const response = await fetch(ADMIN_API_CREATE_DEPARTMENT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showNotification('Success', 'Department created successfully!', 'success');
+                closeModal('createDepartmentModal');
+                form.reset();
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showNotification('Error', result.error || 'Failed to create department', 'error');
+            }
+        } catch (error) {
+            console.error('Form submission error:', error);
+            showNotification('Error', 'Network error occurred', 'error');
+        }
+    }
+    
+    async function submitEmployeeForm() {
+        if (!validateForm('registerEmployeeForm')) {
+            showNotification('Error', 'Please fill in all required fields', 'error');
+            return;
+        }
+        
+        const form = document.getElementById('registerEmployeeForm');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        try {
+            const response = await fetch(ADMIN_API_CREATE_EMPLOYEE, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showNotification('Success', 'Employee registered successfully!', 'success');
+                closeModal('registerEmployeeModal');
+                form.reset();
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showNotification('Error', result.error || 'Failed to register employee', 'error');
+            }
+        } catch (error) {
+            console.error('Form submission error:', error);
+            showNotification('Error', 'Network error occurred', 'error');
+        }
+    }
+    
+    async function submitProjectForm() {
+        if (!validateForm('createProjectForm')) {
+            showNotification('Error', 'Please fill in all required fields', 'error');
+            return;
+        }
+        
+        const form = document.getElementById('createProjectForm');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        // Validate dates
+        const startDate = new Date(data.start_date);
+        const endDate = new Date(data.end_date);
+        
+        if (endDate <= startDate) {
+            showNotification('Error', 'End date must be after start date', 'error');
+            return;
+        }
+        
+        try {
+            const response = await fetch(ADMIN_API_CREATE_PROJECT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showNotification('Success', 'Project created successfully!', 'success');
+                closeModal('createProjectModal');
+                form.reset();
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showNotification('Error', result.error || 'Failed to create project', 'error');
+            }
+        } catch (error) {
+            console.error('Form submission error:', error);
+            showNotification('Error', 'Network error occurred', 'error');
+        }
+    }
+    
+    async function submitAssignPMForm() {
+        if (!validateForm('assignPMForm')) {
+            showNotification('Error', 'Please fill in all required fields', 'error');
+            return;
+        }
+        
+        const form = document.getElementById('assignPMForm');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        try {
+            const response = await fetch(ADMIN_API_ASSIGN_PM, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showNotification('Success', 'Project manager assigned successfully!', 'success');
+                closeModal('assignPMModal');
+                form.reset();
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showNotification('Error', result.error || 'Failed to assign project manager', 'error');
+            }
+        } catch (error) {
+            console.error('Form submission error:', error);
+            showNotification('Error', 'Network error occurred', 'error');
+        }
+    }
+    
+    async function submitQuickTaskForm() {
+        if (!validateForm('quickTaskForm')) {
+            showNotification('Error', 'Please fill in all required fields', 'error');
+            return;
+        }
+        
+        const form = document.getElementById('quickTaskForm');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        try {
+            const response = await fetch(ADMIN_API_CREATE_TASK, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showNotification('Success', 'Task created successfully!', 'success');
+                closeModal('quickTaskModal');
+                form.reset();
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showNotification('Error', result.error || 'Failed to create task', 'error');
+            }
+        } catch (error) {
+            console.error('Form submission error:', error);
+            showNotification('Error', 'Network error occurred', 'error');
+        }
+    }
+    
+    async function submitAnnouncementForm() {
+        const form = document.getElementById('sendAnnouncementForm');
+        if (!form.subject.value.trim() || !form.content.value.trim()) {
+            showNotification('Error', 'Please fill in all required fields', 'error');
+            return;
+        }
+        
+        // Get selected recipients
+        const recipients = [];
+        if (form.querySelector('#all_employees').checked) recipients.push('all');
+        if (form.querySelector('#project_managers').checked) recipients.push('pms');
+        if (form.querySelector('#specific_department').checked && form.department_id.value) {
+            recipients.push(`department:${form.department_id.value}`);
+        }
+        
+        if (recipients.length === 0) {
+            showNotification('Error', 'Please select at least one recipient group', 'error');
+            return;
+        }
+        
+        const data = {
+            subject: form.subject.value,
+            content: form.content.value,
+            recipients: recipients.join(','),
+            priority: form.querySelector('input[name="priority"]:checked').value,
+            require_acknowledgement: form.require_acknowledgement.checked
+        };
+        
+        try {
+            const response = await fetch(ADMIN_API_SEND_ANNOUNCEMENT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showNotification('Success', 'Announcement sent successfully!', 'success');
+                closeModal('sendAnnouncementModal');
+                form.reset();
+            } else {
+                showNotification('Error', result.error || 'Failed to send announcement', 'error');
+            }
+        } catch (error) {
+            console.error('Form submission error:', error);
+            showNotification('Error', 'Network error occurred', 'error');
+        }
+    }
+    
+    // Load stats details
+    async function loadStatsDetails(type) {
+        document.getElementById('statsDetailsModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        
+        try {
+            const response = await fetch(ADMIN_API_STATS_DETAILS.replace('0', type));
+            const result = await response.json();
+            
+            if (response.ok) {
+                displayStatsDetails(type, result);
+            } else {
+                document.getElementById('statsModalContent').innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-4"></i>
+                        <p class="text-gray-500">Failed to load statistics</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Failed to load stats details:', error);
+            document.getElementById('statsModalContent').innerHTML = `
+                <div class="text-center py-8">
+                    <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-4"></i>
+                    <p class="text-gray-500">Network error occurred</p>
+                </div>
+            `;
+        }
+    }
+    
+    function displayStatsDetails(type, data) {
+        const titleMap = {
+            'projects': 'Project Statistics',
+            'employees': 'Employee Statistics',
+            'pms': 'Project Manager Statistics',
+            'tasks': 'Task Statistics'
+        };
+        
+        document.getElementById('statsModalTitle').textContent = titleMap[type] || 'Statistics';
+        
+        let content = '';
+        
+        switch(type) {
+            case 'projects':
+                content = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-medium text-gray-700 mb-2">By Status</h4>
+                            ${data.by_status ? data.by_status.map(stat => `
+                                <div class="flex justify-between items-center py-2 border-b">
+                                    <span class="text-sm">${stat.status}</span>
+                                    <span class="font-medium">${stat.count}</span>
+                                </div>
+                            `).join('') : '<p class="text-gray-500 text-sm">No data</p>'}
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-medium text-gray-700 mb-2">By Department</h4>
+                            ${data.by_department ? data.by_department.map(stat => `
+                                <div class="flex justify-between items-center py-2 border-b">
+                                    <span class="text-sm">${stat.department}</span>
+                                    <span class="font-medium">${stat.count}</span>
+                                </div>
+                            `).join('') : '<p class="text-gray-500 text-sm">No data</p>'}
+                        </div>
+                    </div>
+                `;
+                break;
+                
+            case 'employees':
+                content = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-medium text-gray-700 mb-2">By Role</h4>
+                            ${data.by_role ? data.by_role.map(stat => `
+                                <div class="flex justify-between items-center py-2 border-b">
+                                    <span class="text-sm">${stat.role}</span>
+                                    <span class="font-medium">${stat.count}</span>
+                                </div>
+                            `).join('') : '<p class="text-gray-500 text-sm">No data</p>'}
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-medium text-gray-700 mb-2">By Department</h4>
+                            ${data.by_department ? data.by_department.map(stat => `
+                                <div class="flex justify-between items-center py-2 border-b">
+                                    <span class="text-sm">${stat.department}</span>
+                                    <span class="font-medium">${stat.count}</span>
+                                </div>
+                            `).join('') : '<p class="text-gray-500 text-sm">No data</p>'}
+                        </div>
+                    </div>
+                `;
+                break;
+                
+            default:
+                content = `
+                    <div class="text-center py-8">
+                        <p class="text-gray-500">Detailed statistics for ${type} are not available yet.</p>
+                    </div>
+                `;
+        }
+        
+        document.getElementById('statsModalContent').innerHTML = content;
+    }
+    
+    // Update dashboard stats dynamically
+    function updateDashboardStats(data) {
+        // This would update the stats cards without reloading the page
+        // For now, we'll just log the data
+        console.log('Stats updated:', data);
+    }
+    
+    // Notification helper
+    function showNotification(title, message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 transform transition-all duration-300 ${
+            type === 'success' ? 'bg-green-100 border-green-400 text-green-800' :
+            type === 'error' ? 'bg-red-100 border-red-400 text-red-800' :
+            'bg-blue-100 border-blue-400 text-blue-800'
+        } border-l-4`;
+        
+        notification.innerHTML = `
+            <div class="flex items-center">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} mr-3"></i>
+                <div>
+                    <p class="font-medium">${title}</p>
+                    <p class="text-sm">${message}</p>
+                </div>
+                <button class="ml-4 text-gray-500 hover:text-gray-700" onclick="this.parentElement.parentElement.remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Remove notification after 5 seconds
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+    
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            if (event.target === modal) {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+        });
+    };
+    
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                if (!modal.classList.contains('hidden')) {
+                    modal.classList.add('hidden');
+                    document.body.style.overflow = '';
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

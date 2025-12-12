@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<!-- templates/employee/base.html -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ProjectFlow{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'ink-black': '#001219',
+                        'dark-teal': '#005f73',
+                        'dark-cyan': '#0a9396',
+                        'pearl-aqua': '#94d2bd',
+                        'vanilla-custard': '#e9d8a6',
+                        'golden-orange': '#ee9b00',
+                        'burnt-caramel': '#ca6702',
+                        'rusty-spice': '#bb3e03',
+                        'oxidized-iron': '#ae2012',
+                        'brown-red': '#9b2226',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .sidebar {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        .active-tab {
+            background-color: rgba(148, 210, 189, 0.2);
+            border-left: 4px solid #94d2bd;
+        }
+        .task-status-todo { border-left: 4px solid #ee9b00; }
+        .task-status-progress { border-left: 4px solid #0a9396; }
+        .task-status-review { border-left: 4px solid #bb3e03; }
+        .task-status-done { border-left: 4px solid #94d2bd; }
+        .priority-high { background-color: rgba(187, 62, 3, 0.1); color: #bb3e03; }
+        .priority-medium { background-color: rgba(238, 155, 0, 0.1); color: #ca6702; }
+        .priority-low { background-color: rgba(148, 210, 189, 0.1); color: #0a9396; }
+        .timer-active { background-color: rgba(14, 165, 233, 0.1); color: #0ea5e9; }
+        .progress-bar { 
+            height: 8px; 
+            border-radius: 4px; 
+            background-color: #e5e7eb; 
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        .standup-card {
+            background: linear-gradient(135deg, #e9d8a6 0%, #94d2bd 100%);
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gray-50">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <div class="sidebar w-64 bg-ink-black text-white flex flex-col">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-pearl-aqua">ProjectFlow</h1>
+                <p class="text-sm text-gray-400 mt-1">Employee Dashboard</p>
+            </div>
+            
+            <nav class="flex-1 px-4 py-6">
+                <ul class="space-y-2">
+                    <li>
+                        <a href="{% url 'employee:dashboard' %}" class="flex items-center px-4 py-3 rounded-lg {% if request.resolver_match.url_name == 'dashboard' %}active-tab text-pearl-aqua{% else %}text-gray-300 hover:bg-dark-teal hover:text-white transition{% endif %}">
+                            <i class="fas fa-tachometer-alt mr-3"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'employee:my_tasks' %}" class="flex items-center px-4 py-3 rounded-lg {% if request.resolver_match.url_name == 'my_tasks' %}active-tab text-pearl-aqua{% else %}text-gray-300 hover:bg-dark-teal hover:text-white transition{% endif %}">
+                            <i class="fas fa-tasks mr-3"></i>
+                            <span>My Tasks</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'employee:time_tracking' %}" class="flex items-center px-4 py-3 rounded-lg {% if request.resolver_match.url_name == 'time_tracking' %}active-tab text-pearl-aqua{% else %}text-gray-300 hover:bg-dark-teal hover:text-white transition{% endif %}">
+                            <i class="fas fa-clock mr-3"></i>
+                            <span>Time Tracking</span>
+                        </a>
+                    </li>
+                   
+                    <li>
+    <a href="{% url 'employee:messages' %}" class="flex items-center px-4 py-3 rounded-lg {% if request.resolver_match.url_name == 'messages' %}active-tab text-pearl-aqua{% else %}text-gray-300 hover:bg-dark-teal hover:text-white transition{% endif %}">
+        <i class="fas fa-comments mr-3"></i>
+        <span>Messages</span>
+    </a>
+</li>
+                    
+                    
+                </ul>
+            </nav>
+            
+            <div class="p-4 border-t border-dark-teal">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full bg-dark-cyan flex items-center justify-center text-white font-bold">
+                        {% if user.get_full_name %}{{ user.get_full_name|slice:":2"|upper }}{% else %}{{ user.username|slice:":2"|upper }}{% endif %}
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium">{% if user.get_full_name %}{{ user.get_full_name }}{% else %}{{ user.username }}{% endif %}</p>
+                        <p class="text-xs text-gray-400">{% if user.employee_profile %}{{ user.employee_profile.job_position }}{% else %}{{ user.get_role_display }}{% endif %}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Header -->
+            <header class="bg-white shadow-sm py-4 px-6 flex justify-between items-center">
+                <div class="flex items-center">
+                    <button id="sidebarToggle" class="text-dark-teal mr-4">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    <h2 class="text-xl font-semibold text-ink-black">{% block page_title %}Dashboard{% endblock %}</h2>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <a href="{% url 'employee:notifications' %}" class="text-dark-teal">
+                            <i class="fas fa-bell text-xl"></i>
+                            {% if unread_notifications %}
+                            <span class="absolute -top-1 -right-1 bg-rusty-spice text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">{{ unread_notifications }}</span>
+                            {% endif %}
+                        </a>
+                    </div>
+                    <div class="relative">
+                        <a href="{% url 'employee:messages' %}" class="text-dark-teal">
+                            <i class="fas fa-envelope text-xl"></i>
+                            {% if unread_messages %}
+                            <span class="absolute -top-1 -right-1 bg-golden-orange text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">{{ unread_messages }}</span>
+                            {% endif %}
+                        </a>
+                    </div>
+                    <div id="timerDisplay" class="px-4 py-2 bg-dark-teal text-white rounded-lg flex items-center">
+                        <i class="fas fa-clock mr-2"></i>
+                        <span id="timerValue">00:00:00</span>
+                        <button id="timerToggle" class="ml-2">
+                            <i class="fas fa-play"></i>
+                        </button>
+                    </div>
+                    <div>
+                        <a href="{% url 'logout' %}" class="text-sm text-gray-600 hover:text-dark-teal">Logout</a>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Main Content -->
+            <main class="flex-1 overflow-y-auto p-6 bg-gray-50">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <!-- Task Detail Modal (can be overridden by child templates) -->
+    {% block modal %}{% endblock %}
+
+    <script>
+        // Sidebar toggle functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', function() {
+                    const sidebar = document.querySelector('.sidebar');
+                    sidebar.classList.toggle('w-64');
+                    sidebar.classList.toggle('w-20');
+                    
+                    // Toggle text in sidebar items
+                    const sidebarTexts = document.querySelectorAll('.sidebar span');
+                    sidebarTexts.forEach(text => {
+                        text.classList.toggle('hidden');
+                    });
+                    
+                    // Toggle logo text
+                    const logoText = document.querySelector('.sidebar p');
+                    if (logoText) logoText.classList.toggle('hidden');
+                });
+            }
+            
+            // Timer functionality
+            let timerInterval;
+            let seconds = 0;
+            let timerRunning = false;
+            
+            const timerToggle = document.getElementById('timerToggle');
+            if (timerToggle) {
+                timerToggle.addEventListener('click', function() {
+                    if (!timerRunning) {
+                        // Start timer
+                        timerRunning = true;
+                        this.innerHTML = '<i class="fas fa-pause"></i>';
+                        document.getElementById('timerDisplay').classList.add('timer-active');
+                        
+                        timerInterval = setInterval(function() {
+                            seconds++;
+                            updateTimerDisplay();
+                        }, 1000);
+                    } else {
+                        // Pause timer
+                        timerRunning = false;
+                        this.innerHTML = '<i class="fas fa-play"></i>';
+                        document.getElementById('timerDisplay').classList.remove('timer-active');
+                        clearInterval(timerInterval);
+                    }
+                });
+            }
+            
+            function updateTimerDisplay() {
+                const timerValue = document.getElementById('timerValue');
+                if (timerValue) {
+                    const hours = Math.floor(seconds / 3600);
+                    const minutes = Math.floor((seconds % 3600) / 60);
+                    const secs = seconds % 60;
+                    
+                    timerValue.textContent = 
+                        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                }
+            }
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

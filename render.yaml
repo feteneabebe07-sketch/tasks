@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: project-management
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    startCommand: gunicorn project_management.wsgi --log-file -
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        value: ""
+      - key: DJANGO_DEBUG
+        value: 'False'
+      - key: DATABASE_URL
+        value: ""
+      - key: REDIS_URL
+        value: ""

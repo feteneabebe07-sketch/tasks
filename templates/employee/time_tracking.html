@@ -1,0 +1,548 @@
+{% extends 'employee/base.html' %}
+
+{% block title %}ProjectFlow - Time Tracking{% endblock %}
+{% block page_title %}Time Tracking{% endblock %}
+
+{% block extra_css %}
+<style>
+    .timer-active { 
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(10, 147, 150, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(10, 147, 150, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(10, 147, 150, 0); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <!-- Active Timer -->
+    <div class="bg-white rounded-xl shadow-sm p-6 mb-8">
+        <h3 class="text-xl font-bold text-ink-black mb-4">Current Task</h3>
+        
+        <div class="mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h4 class="font-medium text-lg text-ink-black" id="currentTaskTitle">{{ current_task.title|default:"No active task" }}</h4>
+                    <p class="text-sm text-gray-600" id="currentTaskDetails">
+                        {% if current_task %}
+                            {{ current_task.project.name }} • {{ current_task.get_status_display }}
+                        {% else %}
+                            Select a task to start tracking time
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-gray-600">Time spent</p>
+                    <p class="text-xl font-bold text-dark-teal" id="taskTime">
+                        {% if current_task %}
+                            {{ current_task.actual_hours|default:"0" }}h
+                        {% else %}
+                            0h 00m
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">What are you working on?</label>
+                <textarea id="activityDescription" class="w-full p-3 border border-gray-300 rounded-lg text-sm" rows="2" 
+                          placeholder="Describe what you're working on..."></textarea>
+            </div>
+            
+            <div class="flex space-x-3">
+                <button id="stopTimer" class="px-4 py-2 bg-red-100 text-red-700 rounded-lg flex items-center">
+                    <i class="fas fa-stop mr-2"></i>
+                    Stop & Save
+                </button>
+                <button id="switchTask" class="px-4 py-2 border border-dark-teal text-dark-teal rounded-lg flex items-center">
+                    <i class="fas fa-exchange-alt mr-2"></i>
+                    Switch Task
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Today's Time Log -->
+    <div class="bg-white rounded-xl shadow-sm p-6 mb-8">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold text-ink-black">Today's Time Log</h3>
+            <button id="addManualEntry" class="px-4 py-2 bg-dark-teal text-white rounded-lg text-sm">
+                <i class="fas fa-plus mr-2"></i>
+                Add Entry
+            </button>
+        </div>
+        
+        <div class="space-y-4" id="timeLogContainer">
+            {% for log in today_time_logs %}
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                    <p class="font-medium">{{ log.task.title }}</p>
+                    <p class="text-sm text-gray-600">{{ log.date|date:"M d, Y" }} • {{ log.hours }} hours</p>
+                    {% if log.description %}
+                    <p class="text-xs text-gray-500 mt-1">{{ log.description|truncatechars:50 }}</p>
+                    {% endif %}
+                </div>
+                <div class="text-right">
+                    <p class="font-medium text-dark-teal">{{ log.hours }}h</p>
+                    <p class="text-xs text-gray-600">Logged</p>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-gray-500 text-center py-4">No time logs for today yet.</p>
+            {% endfor %}
+            
+            <!-- Current Active Entry (will be populated by JavaScript) -->
+            <div id="currentActiveEntry" class="hidden flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <div>
+                    <p class="font-medium" id="currentLogTask">Task Name</p>
+                    <p class="text-sm text-gray-600" id="currentLogTime">Start Time - Now</p>
+                </div>
+                <div class="text-right">
+                    <p class="font-medium text-dark-cyan" id="currentLogDuration">0m+</p>
+                    <p class="text-xs text-blue-600">
+                        <i class="fas fa-play mr-1"></i>
+                        Active
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Today's Total -->
+        <div class="mt-6 pt-4 border-t border-gray-200">
+            <div class="flex justify-between items-center">
+                <p class="text-lg font-bold text-ink-black">Today's Total</p>
+                <p class="text-2xl font-bold text-dark-teal" id="todayTotal">{{ today_total_hours }}h</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Task Selection -->
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h3 class="text-xl font-bold text-ink-black mb-4">Track Time on Task</h3>
+        
+        <div class="space-y-3" id="taskSelectionContainer">
+            {% for task in available_tasks %}
+            <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer task-select" 
+                 data-task-id="{{ task.id }}" 
+                 data-task-title="{{ task.title }}"
+                 data-project="{{ task.project.name }}"
+                 data-priority="{{ task.priority }}">
+                <div>
+                    <p class="font-medium">{{ task.title }}</p>
+                    <p class="text-sm text-gray-600">{{ task.project.name }} • {{ task.get_priority_display }} Priority</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-gray-600">Time spent</p>
+                    <p class="font-medium text-dark-teal">
+                        {{ task.actual_hours|default:"0" }}h
+                    </p>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-gray-500 text-center py-4">No tasks available for time tracking.</p>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block modal %}
+    <!-- Manual Entry Modal -->
+    <div id="manualEntryModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-md mx-4 p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-semibold text-ink-black">Add Time Entry</h3>
+                <button class="text-gray-500 hover:text-gray-700 close-modal">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="manualEntryForm" method="POST" action="{% url 'employee:log_time_manual' %}">
+                {% csrf_token %}
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Task</label>
+                        <select name="task" class="w-full p-3 border border-gray-300 rounded-lg" id="entryTask" required>
+                            <option value="">Select Task</option>
+                            {% for task in available_tasks %}
+                            <option value="{{ task.id }}">{{ task.title }} - {{ task.project.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                            <input type="date" name="date" class="w-full p-3 border border-gray-300 rounded-lg" 
+                                   value="{% now 'Y-m-d' %}" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Hours</label>
+                            <input type="number" name="hours" step="0.25" min="0.25" max="24" 
+                                   class="w-full p-3 border border-gray-300 rounded-lg" placeholder="1.5" required>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <textarea name="description" class="w-full p-3 border border-gray-300 rounded-lg" 
+                                  rows="3" placeholder="What did you work on?" required></textarea>
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 close-modal">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-dark-teal text-white rounded-lg">
+                        Save Entry
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Task Switch Modal -->
+    <div id="switchTaskModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-md mx-4 p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-semibold text-ink-black">Switch Task</h3>
+                <button class="text-gray-500 hover:text-gray-700 close-modal">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-3" id="switchTaskContainer">
+                {% for task in available_tasks %}
+                <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer switch-task-option" 
+                     data-task-id="{{ task.id }}" 
+                     data-task-title="{{ task.title }}">
+                    <div>
+                        <p class="font-medium">{{ task.title }}</p>
+                        <p class="text-sm text-gray-600">{{ task.project.name }} • {{ task.get_priority_display }} Priority</p>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400"></i>
+                </div>
+                {% empty %}
+                <p class="text-gray-500 text-center py-4">No tasks available.</p>
+                {% endfor %}
+            </div>
+            
+            <div class="mt-6 flex justify-end">
+                <button class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 close-modal">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // CSRF token for AJAX requests
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    // Timer functionality
+    let timerInterval;
+    let seconds = 0;
+    let timerRunning = false;
+    let currentTaskId = null;
+    let currentTaskTitle = '';
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // Timer toggle functionality
+        document.getElementById('timerToggle').addEventListener('click', function() {
+            if (!currentTaskId) {
+                showNotification('Select Task First', 'Please select a task before starting the timer.', 'info');
+                return;
+            }
+            
+            if (!timerRunning) {
+                // Start timer
+                timerRunning = true;
+                this.innerHTML = '<i class="fas fa-pause"></i>';
+                document.getElementById('timerDisplay').classList.add('timer-active');
+                
+                // Show active entry
+                document.getElementById('currentActiveEntry').classList.remove('hidden');
+                
+                timerInterval = setInterval(function() {
+                    seconds++;
+                    updateTimerDisplay();
+                }, 1000);
+                
+                showNotification('Timer Started', `Tracking time for ${currentTaskTitle}`, 'success');
+            } else {
+                // Pause timer
+                timerRunning = false;
+                this.innerHTML = '<i class="fas fa-play"></i>';
+                document.getElementById('timerDisplay').classList.remove('timer-active');
+                clearInterval(timerInterval);
+                
+                showNotification('Timer Paused', 'Time tracking paused.', 'info');
+            }
+        });
+        
+        // Stop timer and save
+        document.getElementById('stopTimer').addEventListener('click', function() {
+            if (!timerRunning || !currentTaskId) {
+                showNotification('No Active Timer', 'There is no active timer to stop.', 'info');
+                return;
+            }
+            
+            // Get description
+            const description = document.getElementById('activityDescription').value;
+            
+            // Prepare data for AJAX request
+            const formData = new FormData();
+            formData.append('task', currentTaskId);
+            formData.append('hours', (seconds / 3600).toFixed(2));
+            formData.append('description', description);
+            formData.append('csrfmiddlewaretoken', csrftoken);
+            
+            // Send AJAX request
+            fetch('{% url "employee:log_time" %}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reset timer
+                    clearInterval(timerInterval);
+                    seconds = 0;
+                    timerRunning = false;
+                    
+                    // Update UI
+                    document.getElementById('timerToggle').innerHTML = '<i class="fas fa-play"></i>';
+                    document.getElementById('timerDisplay').classList.remove('timer-active');
+                    document.getElementById('currentActiveEntry').classList.add('hidden');
+                    
+                    // Update today's total
+                    document.getElementById('todayTotal').textContent = data.today_total + 'h';
+                    
+                    // Add new entry to log
+                    const timeLogContainer = document.getElementById('timeLogContainer');
+                    const newEntry = document.createElement('div');
+                    newEntry.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg';
+                    newEntry.innerHTML = `
+                        <div>
+                            <p class="font-medium">${currentTaskTitle}</p>
+                            <p class="text-sm text-gray-600">${new Date().toLocaleDateString()} • ${(seconds / 3600).toFixed(2)}h</p>
+                            ${description ? `<p class="text-xs text-gray-500 mt-1">${description.substring(0, 50)}...</p>` : ''}
+                        </div>
+                        <div class="text-right">
+                            <p class="font-medium text-dark-teal">${(seconds / 3600).toFixed(2)}h</p>
+                            <p class="text-xs text-gray-600">Logged</p>
+                        </div>
+                    `;
+                    timeLogContainer.insertBefore(newEntry, timeLogContainer.firstChild);
+                    
+                    // Clear description
+                    document.getElementById('activityDescription').value = '';
+                    
+                    showNotification('Time Logged', `Logged ${(seconds / 3600).toFixed(2)}h for ${currentTaskTitle}`, 'success');
+                    
+                    // Reset timer display
+                    document.getElementById('timerValue').textContent = '00:00:00';
+                    document.getElementById('taskTime').textContent = '0h 00m';
+                } else {
+                    showNotification('Error', 'Failed to save time log.', 'error');
+                }
+            });
+        });
+        
+        // Switch task button
+        document.getElementById('switchTask').addEventListener('click', function() {
+            document.getElementById('switchTaskModal').classList.remove('hidden');
+        });
+        
+        // Task selection for switching
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.switch-task-option')) {
+                const option = e.target.closest('.switch-task-option');
+                const taskId = option.getAttribute('data-task-id');
+                const taskTitle = option.getAttribute('data-task-title');
+                
+                // Update current task
+                currentTaskId = taskId;
+                currentTaskTitle = taskTitle;
+                
+                // Update UI
+                document.getElementById('currentTaskTitle').textContent = taskTitle;
+                document.getElementById('currentTaskDetails').textContent = option.querySelector('p.text-sm').textContent;
+                
+                // Update active entry
+                document.getElementById('currentLogTask').textContent = taskTitle;
+                document.getElementById('currentLogTime').textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) + ' - Now';
+                
+                // Reset timer
+                if (timerRunning) {
+                    clearInterval(timerInterval);
+                    timerRunning = false;
+                    document.getElementById('timerToggle').innerHTML = '<i class="fas fa-play"></i>';
+                    document.getElementById('timerDisplay').classList.remove('timer-active');
+                }
+                
+                seconds = 0;
+                updateTimerDisplay();
+                
+                document.getElementById('switchTaskModal').classList.add('hidden');
+                showNotification('Task Switched', `Now tracking time on ${taskTitle}`, 'success');
+            }
+            
+            if (e.target.closest('.task-select')) {
+                const option = e.target.closest('.task-select');
+                const taskId = option.getAttribute('data-task-id');
+                const taskTitle = option.getAttribute('data-task-title');
+                
+                // Update current task
+                currentTaskId = taskId;
+                currentTaskTitle = taskTitle;
+                
+                // Update UI
+                document.getElementById('currentTaskTitle').textContent = taskTitle;
+                document.getElementById('currentTaskDetails').textContent = option.querySelector('p.text-sm').textContent;
+                
+                // Update active entry
+                document.getElementById('currentLogTask').textContent = taskTitle;
+                document.getElementById('currentLogTime').textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) + ' - Now';
+                
+                showNotification('Task Selected', `Now tracking time on ${taskTitle}`, 'success');
+            }
+        });
+        
+        // Manual entry button
+        document.getElementById('addManualEntry').addEventListener('click', function() {
+            document.getElementById('manualEntryModal').classList.remove('hidden');
+        });
+        
+        // Close modal handlers
+        document.querySelectorAll('.close-modal').forEach(button => {
+            button.addEventListener('click', function() {
+                document.getElementById('manualEntryModal').classList.add('hidden');
+                document.getElementById('switchTaskModal').classList.add('hidden');
+            });
+        });
+        
+        // Close modals when clicking outside
+        document.getElementById('manualEntryModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.add('hidden');
+            }
+        });
+        
+        document.getElementById('switchTaskModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.add('hidden');
+            }
+        });
+        
+        // Manual entry form submission
+        document.getElementById('manualEntryForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Close modal
+                    document.getElementById('manualEntryModal').classList.add('hidden');
+                    
+                    // Reset form
+                    this.reset();
+                    
+                    // Update today's total
+                    document.getElementById('todayTotal').textContent = data.today_total + 'h';
+                    
+                    // Add new entry to log
+                    const timeLogContainer = document.getElementById('timeLogContainer');
+                    const newEntry = document.createElement('div');
+                    newEntry.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg';
+                    newEntry.innerHTML = `
+                        <div>
+                            <p class="font-medium">${data.task_title}</p>
+                            <p class="text-sm text-gray-600">${data.date} • ${data.hours}h</p>
+                            ${data.description ? `<p class="text-xs text-gray-500 mt-1">${data.description.substring(0, 50)}...</p>` : ''}
+                        </div>
+                        <div class="text-right">
+                            <p class="font-medium text-dark-teal">${data.hours}h</p>
+                            <p class="text-xs text-gray-600">Manual Entry</p>
+                        </div>
+                    `;
+                    timeLogContainer.insertBefore(newEntry, timeLogContainer.firstChild);
+                    
+                    showNotification('Entry Added', `Added ${data.hours}h for ${data.task_title}`, 'success');
+                } else {
+                    showNotification('Error', 'Failed to save manual entry.', 'error');
+                }
+            });
+        });
+    });
+    
+    function updateTimerDisplay() {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        
+        // Update main timer display
+        document.getElementById('timerValue').textContent = 
+            `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        
+        // Update task time display
+        document.getElementById('taskTime').textContent = `${hours}h ${minutes.toString().padStart(2, '0')}m`;
+        
+        // Update current entry time
+        const currentEntryMinutes = Math.floor(seconds / 60);
+        document.getElementById('currentLogDuration').textContent = `${currentEntryMinutes}m+`;
+    }
+    
+    function showNotification(title, message, type) {
+        const notification = document.createElement('div');
+        const colors = {
+            'success': 'bg-green-50 border-green-200 text-green-800',
+            'error': 'bg-red-50 border-red-200 text-red-800',
+            'info': 'bg-blue-50 border-blue-200 text-blue-800'
+        };
+        
+        notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 transform transition-transform duration-300 translate-x-full ${colors[type] || colors.info}`;
+        notification.innerHTML = `
+            <div class="flex items-start">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'} mr-3 mt-1"></i>
+                <div>
+                    <p class="font-medium">${title}</p>
+                    <p class="text-sm mt-1">${message}</p>
+                </div>
+                <button class="ml-4 text-gray-500 hover:text-gray-700" onclick="this.parentElement.parentElement.remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.classList.remove('translate-x-full');
+            notification.classList.add('translate-x-0');
+        }, 10);
+        
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.classList.remove('translate-x-0');
+                notification.classList.add('translate-x-full');
+                setTimeout(() => {
+                    if (notification.parentElement) {
+                        notification.parentElement.removeChild(notification);
+                    }
+                }, 300);
+            }
+        }, 3000);
+    }
+</script>
+{% endblock %}

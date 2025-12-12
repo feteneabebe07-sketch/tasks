@@ -1,0 +1,429 @@
+<!-- templates/employee/dashboard.html -->
+{% extends 'employee/base.html' %}
+
+{% block title %}ProjectFlow - Employee Dashboard{% endblock %}
+
+{% block page_title %}Employee Dashboard{% endblock %}
+
+{% block content %}
+<!-- Daily Standup & Quick Stats -->
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Daily Standup Card -->
+    <div class="lg:col-span-2 standup-card rounded-xl shadow-sm p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-ink-black">Daily Check-in</h3>
+            <span class="text-xs bg-white bg-opacity-50 px-2 py-1 rounded-full">{{ today|date:"M d, Y" }}</span>
+        </div>
+        
+        {% if standup %}
+        <div class="space-y-4">
+            <div>
+                <h4 class="font-medium text-ink-black mb-2">Yesterday's Work:</h4>
+                <p class="text-gray-600 bg-white bg-opacity-50 p-3 rounded-lg">{{ standup.yesterday_work }}</p>
+            </div>
+            
+            <div>
+                <h4 class="font-medium text-ink-black mb-2">Today's Plan:</h4>
+                <p class="text-gray-600 bg-white bg-opacity-50 p-3 rounded-lg">{{ standup.today_plan }}</p>
+            </div>
+            
+            {% if standup.blockers %}
+            <div>
+                <h4 class="font-medium text-ink-black mb-2">Blockers:</h4>
+                <p class="text-gray-600 bg-white bg-opacity-50 p-3 rounded-lg">{{ standup.blockers }}</p>
+            </div>
+            {% endif %}
+            
+            <button onclick="window.location.href='{% url 'employee:submit_standup' %}'" class="w-full bg-dark-teal text-white py-2 rounded-lg font-medium flex items-center justify-center">
+                <i class="fas fa-edit mr-2"></i>
+                Update Standup
+            </button>
+        </div>
+        {% else %}
+        <form method="post" action="{% url 'employee:submit_standup' %}">
+            {% csrf_token %}
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-ink-black mb-1">What did you complete yesterday?</label>
+                    <textarea name="yesterday_work" class="w-full p-3 border border-gray-300 rounded-lg text-sm" rows="2" placeholder="Describe completed work..." required></textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-ink-black mb-1">What is your plan today?</label>
+                    <textarea name="today_plan" class="w-full p-3 border border-gray-300 rounded-lg text-sm" rows="2" placeholder="Describe today's plan..." required></textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-ink-black mb-1">Any blockers or challenges?</label>
+                    <textarea name="blockers" class="w-full p-3 border border-gray-300 rounded-lg text-sm" rows="1" placeholder="Report any blockers..."></textarea>
+                </div>
+                
+                <button type="submit" class="w-full bg-dark-teal text-white py-2 rounded-lg font-medium flex items-center justify-center">
+                    <i class="fas fa-paper-plane mr-2"></i>
+                    Submit Check-in
+                </button>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+    
+    <!-- Quick Stats -->
+    <div class="lg:col-span-2 grid grid-cols-2 gap-4">
+        <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Today's Tasks</p>
+                    <h3 class="text-2xl font-bold text-ink-black mt-1">{{ today_tasks_count }}</h3>
+                </div>
+                <div class="p-3 bg-dark-teal bg-opacity-10 rounded-lg">
+                    <i class="fas fa-list-check text-dark-teal text-xl"></i>
+                </div>
+            </div>
+                <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    const openBtn = document.getElementById('openMessageModalBtn');
+                    const modal = document.getElementById('messageModal');
+                    const closeBtn = document.getElementById('closeMessageModal');
+                    const cancelBtn = document.getElementById('cancelMessageBtn');
+                    const recipientsSelect = document.getElementById('recipientsSelect');
+
+                    function openModal() {
+                        modal.classList.remove('hidden');
+                        modal.classList.add('flex');
+                        // focus textarea
+                        const ta = modal.querySelector('textarea[name="content"]');
+                        if (ta) ta.focus();
+                    }
+
+                    function closeModal() {
+                        modal.classList.remove('flex');
+                        modal.classList.add('hidden');
+                        // clear selection
+                        try { for (let i=0;i<recipientsSelect.options.length;i++){ recipientsSelect.options[i].selected = false; } } catch(e){}
+                    }
+
+                    openBtn?.addEventListener('click', function(e){ e.preventDefault(); openModal(); });
+                    closeBtn?.addEventListener('click', function(e){ e.preventDefault(); closeModal(); });
+                    cancelBtn?.addEventListener('click', function(e){ e.preventDefault(); closeModal(); });
+                    // If user clicks outside modal content, close
+                    modal?.addEventListener('click', function(e){ if (e.target === modal) closeModal(); });
+                });
+                </script>
+            <p class="text-xs text-gray-500 mt-4">
+                <span class="text-dark-cyan font-medium">{{ in_progress_tasks_count }} in progress</span>
+            </p>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Pending Tasks</p>
+                    <h3 class="text-2xl font-bold text-ink-black mt-1">{{ pending_tasks_count }}</h3>
+                </div>
+                <div class="p-3 bg-golden-orange bg-opacity-10 rounded-lg">
+                    <i class="fas fa-clock text-golden-orange text-xl"></i>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-4">
+                <span class="text-rusty-spice font-medium">{{ due_this_week_count }} due this week</span>
+            </p>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Completed Today</p>
+                    <h3 class="text-2xl font-bold text-ink-black mt-1">{{ completed_today_count }}</h3>
+                </div>
+                <div class="p-3 bg-pearl-aqua bg-opacity-10 rounded-lg">
+                    <i class="fas fa-check-circle text-pearl-aqua text-xl"></i>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-4">
+                <span class="text-dark-cyan font-medium">{{ completion_rate }}% completion rate</span>
+            </p>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Workload</p>
+                    <h3 class="text-2xl font-bold text-ink-black mt-1">{{ workload_percentage }}%</h3>
+                </div>
+                <div class="p-3 bg-rusty-spice bg-opacity-10 rounded-lg">
+                    <i class="fas fa-chart-pie text-rusty-spice text-xl"></i>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-4">
+                <span class="text-dark-cyan font-medium">{{ workload_status }}</span>
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Today's Tasks -->
+    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-semibold text-ink-black">Today's Tasks</h3>
+            <div class="flex space-x-2">
+                <a href="{% url 'employee:my_tasks' %}" class="text-dark-teal text-sm font-medium">View All Tasks</a>
+            </div>
+        </div>
+        
+        {% if today_tasks %}
+        <div class="space-y-4">
+            {% for task in today_tasks %}
+            <div class="border-l-4 pl-4 py-3 {% if task.status == 'done' %}task-status-done bg-green-50{% elif task.status == 'in_progress' %}task-status-progress bg-blue-50{% else %}task-status-todo{% endif %} hover:bg-gray-50 cursor-pointer" onclick="window.location.href='{% url 'employee:task_detail' task.id %}'">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <h4 class="font-medium">{{ task.title }}</h4>
+                        <div class="flex items-center mt-1 space-x-2">
+                            <span class="text-xs priority-{{ task.priority }} px-2 py-1 rounded-full">{{ task.get_priority_display }}</span>
+                            <span class="text-xs text-gray-500">{{ task.project.name }}</span>
+                            {% if task.is_overdue %}
+                            <span class="text-xs bg-rusty-spice bg-opacity-10 text-rusty-spice px-2 py-1 rounded-full">Overdue</span>
+                            {% endif %}
+                        </div>
+                        <p class="text-sm text-gray-600 mt-2">{{ task.description|truncatechars:100 }}</p>
+                        
+                        <div class="flex items-center mt-3">
+                            <div class="flex items-center text-xs text-gray-500 mr-4">
+                                <i class="fas fa-paperclip mr-1"></i>
+                                <span>{{ task.files.count }} attachment{{ task.files.count|pluralize }}</span>
+                            </div>
+                            <div class="flex items-center text-xs text-gray-500 mr-4">
+                                <i class="fas fa-comment mr-1"></i>
+                                <span>{{ task.comments.count }} comment{{ task.comments.count|pluralize }}</span>
+                            </div>
+                            <div class="flex items-center text-xs text-gray-500">
+                                <i class="fas fa-clock mr-1"></i>
+                                <span>Due: {{ task.due_date|date:"M d, Y" }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end space-y-2">
+                        <span class="text-sm font-medium text-{{ task.status_color }}">{{ task.get_status_display }}</span>
+                        {% if task.status != 'done' %}
+                        <form method="post" action="{% url 'employee:update_task_status' task.id %}" class="inline" onclick="event.stopPropagation();">
+                            {% csrf_token %}
+                            {% if task.status == 'todo' %}
+                            <button type="submit" name="status" value="in_progress" class="px-3 py-1 bg-golden-orange text-white text-xs rounded-lg flex items-center start-task">
+                                <i class="fas fa-play mr-1"></i>
+                                Start Task
+                            </button>
+                            {% elif task.status == 'in_progress' %}
+                          
+                            {% endif %}
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="flex justify-between mt-4">
+                    <div class="flex items-center">
+                        <span class="text-xs text-gray-500 mr-2">Progress:</span>
+                        <div class="w-32 progress-bar">
+                            <div class="progress-fill bg-dark-cyan" style="width: {{ task.progress }}%"></div>
+                        </div>
+                        <span class="text-xs text-gray-500 ml-2">{{ task.progress }}%</span>
+                    </div>
+                    <div class="flex space-x-2">
+                        <a href="{% url 'employee:task_detail' task.id %}" class="text-xs text-dark-teal" onclick="event.stopPropagation();">
+                            <i class="fas fa-eye mr-1"></i>
+                            View Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-8 text-gray-500">
+            <i class="fas fa-check-circle text-3xl mb-2 text-pearl-aqua"></i>
+            <p class="text-lg font-medium">No tasks for today!</p>
+            <p class="text-sm mt-1">You're all caught up. Enjoy your day!</p>
+            <a href="{% url 'employee:my_tasks' %}" class="inline-block mt-4 px-4 py-2 bg-dark-teal text-white rounded-lg text-sm">
+                <i class="fas fa-tasks mr-1"></i>
+                View All Tasks
+            </a>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Right Column: Upcoming & Messages -->
+    <div class="space-y-6">
+        <!-- Upcoming Deadlines -->
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-ink-black">Upcoming Deadlines</h3>
+                <a href="{% url 'employee:my_tasks' %}" class="text-dark-teal text-sm font-medium">View All</a>
+            </div>
+            
+            <div class="space-y-3">
+                {% for deadline in upcoming_deadlines %}
+                <div class="flex justify-between items-center p-3 hover:bg-gray-50 rounded-lg">
+                    <div class="flex-1">
+                        <p class="text-sm font-medium">{{ deadline.title|truncatechars:30 }}</p>
+                        <div class="flex items-center mt-1">
+                            <span class="text-xs text-gray-500 mr-2">{{ deadline.project }}</span>
+                            <span class="text-xs priority-{{ deadline.priority }} px-1 py-0.5 rounded">{{ deadline.priority|title }}</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs font-medium">{{ deadline.date|date:"M d" }}</p>
+                        <p class="text-xs text-gray-500">{{ deadline.days_remaining }} days</p>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-4 text-gray-500">
+                    <i class="fas fa-calendar-check text-xl mb-2"></i>
+                    <p class="text-sm">No upcoming deadlines</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Recent Messages -->
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-ink-black">Recent Messages</h3>
+                <div class="flex items-center space-x-3">
+                    <button id="openMessageModalBtn" class="inline-block px-3 py-1 bg-dark-teal text-white rounded-lg text-sm hover:bg-dark-cyan transition">Message</button>
+                    <a href="{% url 'employee:messages' %}" class="text-dark-teal text-sm font-medium">View All</a>
+                </div>
+            </div>
+            
+            <div class="space-y-4">
+                {% for message in recent_messages %}
+                <div class="flex items-start p-2 hover:bg-gray-50 rounded-lg">
+                    <div class="w-8 h-8 rounded-full {{ message.sender_color }} flex items-center justify-center text-white font-bold text-xs mr-3 mt-1">
+                        {{ message.sender_initials }}
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex justify-between">
+                            <h4 class="text-sm font-medium">{{ message.sender.get_full_name|default:message.sender.username }}</h4>
+                            <span class="text-xs text-gray-500">{{ message.created_at|timesince }} ago</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-1">{{ message.content|truncatechars:60 }}</p>
+                        {% if message.task %}
+                        <span class="inline-block mt-1 text-xs px-2 py-1 bg-dark-teal bg-opacity-10 text-dark-teal rounded">Task #{{ message.task.id }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-4 text-gray-500">
+                    <i class="fas fa-comments text-xl mb-2"></i>
+                    <p class="text-sm">No recent messages</p>
+                </div>
+                {% endfor %}
+                
+                <div class="pt-3 border-t border-gray-200">
+                    <a href="{% url 'employee:messages' %}" class="block w-full text-center px-4 py-2 bg-dark-teal text-white rounded-lg text-sm hover:bg-dark-cyan transition">
+                        <i class="fas fa-plus mr-1"></i>
+                        New Message
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <h3 class="text-lg font-semibold text-ink-black mb-4">Quick Actions</h3>
+            <div class="grid grid-cols-2 gap-3">
+                <a href="" class="p-3 bg-dark-teal bg-opacity-10 text-dark-teal rounded-lg text-center hover:bg-dark-teal hover:text-white transition">
+                    <i class="fas fa-clock text-lg mb-1"></i>
+                    <p class="text-xs font-medium">Log Time</p>
+                </a>
+                <a href="" class="p-3 bg-golden-orange bg-opacity-10 text-golden-orange rounded-lg text-center hover:bg-golden-orange hover:text-white transition">
+                    <i class="fas fa-umbrella-beach text-lg mb-1"></i>
+                    <p class="text-xs font-medium">Request Leave</p>
+                </a>
+                <a href="" class="p-3 bg-dark-cyan bg-opacity-10 text-dark-cyan rounded-lg text-center hover:bg-dark-cyan hover:text-white transition">
+                    <i class="fas fa-calendar text-lg mb-1"></i>
+                    <p class="text-xs font-medium">Calendar</p>
+                </a>
+                <a href="" class="p-3 bg-pearl-aqua bg-opacity-10 text-pearl-aqua rounded-lg text-center hover:bg-pearl-aqua hover:text-white transition">
+                    <i class="fas fa-chart-bar text-lg mb-1"></i>
+                    <p class="text-xs font-medium">Workload</p>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Task start buttons
+        document.querySelectorAll('.start-task').forEach(button => {
+            button.addEventListener('click', function() {
+                const taskCard = this.closest('.task-status-todo');
+                if (taskCard) {
+                    taskCard.classList.remove('task-status-todo');
+                    taskCard.classList.add('task-status-progress');
+                    
+                    const statusElement = taskCard.querySelector('.font-medium:last-child');
+                    if (statusElement) {
+                        statusElement.textContent = 'In Progress';
+                        statusElement.classList.remove('text-golden-orange');
+                        statusElement.classList.add('text-dark-cyan');
+                    }
+                    
+                    // Start timer if not running
+                    const timerRunning = localStorage.getItem('timerRunning') === 'true';
+                    if (!timerRunning) {
+                        document.getElementById('timerToggle')?.click();
+                    }
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
+
+<!-- Message Composer Modal -->
+<div id="messageModal" class="fixed inset-0 bg-black bg-opacity-40 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-lg w-11/12 max-w-2xl p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold">New Message</h3>
+            <button id="closeMessageModal" class="text-gray-500 hover:text-gray-700">&times;</button>
+        </div>
+        <form id="messageForm" method="post" action="{% url 'employee:send_message' %}">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Recipients</label>
+                <select id="recipientsSelect" name="recipients" multiple class="w-full p-2 border rounded">
+                    {% if project_managers %}
+                    <optgroup label="Project Managers">
+                        {% for u in project_managers %}
+                        <option value="{{ u.id }}">{{ u.name }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    {% endif %}
+                    {% if team_members %}
+                    <optgroup label="Team Members">
+                        {% for u in team_members %}
+                        <option value="{{ u.id }}">{{ u.name }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    {% endif %}
+                </select>
+                <p class="text-xs text-gray-500 mt-1">Hold Ctrl (Windows) / Cmd (Mac) to select multiple.</p>
+            </div>
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                <input type="text" name="subject" class="w-full p-2 border rounded" placeholder="Optional subject">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                <textarea name="content" required class="w-full p-3 border rounded" rows="4" placeholder="Write your message..."></textarea>
+            </div>
+            <div class="flex justify-end space-x-2">
+                <button type="button" id="cancelMessageBtn" class="px-4 py-2 bg-gray-100 rounded">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-dark-teal text-white rounded">Send</button>
+            </div>
+        </form>
+    </div>
+</div>

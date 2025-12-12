@@ -1,0 +1,1084 @@
+<!-- templates/pm/messages.html -->
+{% extends 'pm/base.html' %}
+{% load static %}
+
+{% block page_title %}Messages{% endblock %}
+
+{% block extra_css %}
+<style>
+    .conversation-active {
+        background-color: rgba(148, 210, 189, 0.1);
+        border-left: 4px solid #94d2bd;
+    }
+    
+    .message-sent {
+        background-color: #005f73;
+        color: white;
+        border-radius: 18px 18px 4px 18px;
+        margin-left: auto;
+    }
+    
+    .message-received {
+        background-color: #f1f5f9;
+        color: #334155;
+        border-radius: 18px 18px 18px 4px;
+    }
+    
+    .online-indicator {
+        width: 10px;
+        height: 10px;
+        background-color: #0a9396;
+        border-radius: 50%;
+        border: 2px solid white;
+        position: absolute;
+        bottom: 0;
+        right: 0;
+    }
+    
+    .typing-indicator {
+        font-size: 12px;
+        color: #666;
+        font-style: italic;
+        padding: 5px 0;
+    }
+    
+    .unread-badge {
+        background-color: #ee9b00;
+        color: white;
+        font-size: 12px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .filter-active {
+        background-color: #005f73;
+        color: white;
+    }
+    
+    #chatArea {
+        display: none;
+    }
+    
+    #chatArea.active {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    #noChatSelected {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex-1 overflow-hidden flex">
+    <!-- Conversations Sidebar -->
+    <div class="w-1/3 bg-white border-r border-gray-200 flex flex-col">
+        <!-- Search and Filters -->
+        <div class="p-4 border-b border-gray-200">
+            <div class="relative mb-3">
+                <input type="text" id="searchUsers" placeholder="Search team members..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-dark-teal">
+                <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+            </div>
+            <div class="flex space-x-2">
+                <button id="filterAll" class="filter-active px-3 py-1 rounded-full text-sm transition">All</button>
+                <button id="filterUnread" class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition">Unread</button>
+                <button id="filterOnline" class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition">Online</button>
+            </div>
+        </div>
+        
+        <!-- Conversations List -->
+        <div class="flex-1 overflow-y-auto" id="conversationsList">
+            {% if conversations %}
+                {% for conv in conversations %}
+                <div class="p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition conversation-item {% if forloop.first %}conversation-active{% endif %}" 
+                     data-user-id="{{ conv.user_id }}"
+                     data-unread="{{ conv.unread_count }}">
+                    <div class="flex items-start">
+                        <div class="relative">
+                            <div class="w-12 h-12 rounded-full {{ conv.avatar_color }} flex items-center justify-center text-white font-bold">
+                                {{ conv.initials }}
+                            </div>
+                            {% if conv.is_online %}
+                            <div class="online-indicator"></div>
+                            {% endif %}
+                        </div>
+                        <div class="ml-3 flex-1">
+                            <div class="flex justify-between items-start">
+                                <h3 class="font-medium text-ink-black">{{ conv.name }}</h3>
+                                <span class="text-xs text-gray-500">{{ conv.last_message_time }}</span>
+                            </div>
+                            <p class="text-sm text-gray-600 truncate">{{ conv.last_message }}</p>
+                            <div class="flex justify-between items-center mt-1">
+                                <span class="text-xs text-gray-500">{{ conv.job_position }}</span>
+                                {% if conv.unread_count > 0 %}
+                                <div class="unread-badge">{{ conv.unread_count }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="text-center py-8 text-gray-500">
+                <i class="fas fa-comments text-2xl mb-2"></i>
+                <p>No conversations yet</p>
+                <p class="text-sm mt-1">Start a conversation with a team member</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Team Members -->
+        <div class="border-t border-gray-200">
+            <div class="p-3 bg-gray-50">
+                <h4 class="text-sm font-medium text-gray-700">Team Members</h4>
+            </div>
+            <div class="max-h-64 overflow-y-auto" id="teamMembersList">
+                {% for member in team_members %}
+                <div class="p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition team-member-item" 
+                     data-user-id="{{ member.user_id }}">
+                    <div class="flex items-center">
+                        <div class="relative">
+                            <div class="w-10 h-10 rounded-full {{ member.avatar_color }} flex items-center justify-center text-white text-sm font-bold">
+                                {{ member.initials }}
+                            </div>
+                            {% if member.is_online %}
+                            <div class="online-indicator" style="width: 8px; height: 8px;"></div>
+                            {% endif %}
+                        </div>
+                        <div class="ml-3 flex-1">
+                            <h4 class="text-sm font-medium text-ink-black">{{ member.name }}</h4>
+                            <p class="text-xs text-gray-500">{{ member.role }} • {{ member.project_name }}</p>
+                        </div>
+                        {% if member.has_conversation %}
+                        <span class="text-xs text-dark-teal">
+                            <i class="fas fa-comment"></i>
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% empty %}
+                <div class="p-4 text-center text-gray-500">
+                    <p class="text-sm">No team members available</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Chat Area - Initially hidden -->
+    <div id="chatArea" class="flex-1 flex flex-col">
+        <!-- Chat Header -->
+        <div class="bg-white border-b border-gray-200 p-4 flex justify-between items-center">
+            <div class="flex items-center">
+                <div class="relative">
+                    <div id="chatAvatar" class="w-10 h-10 rounded-full bg-dark-teal flex items-center justify-center text-white font-bold">
+                    </div>
+                    <div id="chatOnlineStatus" class="online-indicator"></div>
+                </div>
+                <div class="ml-3">
+                    <h3 id="chatUserName" class="font-medium text-ink-black"></h3>
+                    <p id="chatUserRole" class="text-xs text-gray-500"></p>
+                </div>
+            </div>
+            <div class="flex space-x-2">
+                <button class="p-2 text-gray-500 hover:text-dark-teal rounded-full hover:bg-gray-100">
+                    <i class="fas fa-phone"></i>
+                </button>
+                <button id="chatInfoBtn" class="p-2 text-gray-500 hover:text-dark-teal rounded-full hover:bg-gray-100">
+                    <i class="fas fa-info-circle"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Messages Container -->
+        <div class="flex-1 overflow-y-auto p-4 bg-gray-50" id="messagesContainer">
+            <!-- Messages will be loaded here -->
+        </div>
+        
+        <!-- Message Input -->
+        <div class="bg-white border-t border-gray-200 p-4">
+            <div class="flex items-center">
+                <button id="attachFileBtn" class="p-2 text-gray-500 hover:text-dark-teal rounded-full hover:bg-gray-100 mr-1">
+                    <i class="fas fa-paperclip"></i>
+                </button>
+                <button id="attachImageBtn" class="p-2 text-gray-500 hover:text-dark-teal rounded-full hover:bg-gray-100 mr-3">
+                    <i class="fas fa-image"></i>
+                </button>
+                
+                <div class="flex-1 relative">
+                    <input type="text" id="messageInput" placeholder="Type a message..." class="w-full pl-4 pr-10 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-dark-teal">
+                    <button id="sendMessageBtn" class="absolute right-3 top-3 text-gray-500 hover:text-dark-teal">
+                        <i class="far fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="typingIndicator" class="typing-indicator hidden">
+                <span id="typingUser"></span> is typing...
+            </div>
+        </div>
+    </div>
+    
+    <!-- No Chat Selected View -->
+    <div id="noChatSelected" class="flex-1 flex items-center justify-center bg-gray-50">
+        <div class="text-center max-w-md">
+            <div class="w-24 h-24 bg-dark-teal bg-opacity-10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-comments text-dark-teal text-3xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-ink-black mb-3">ProjectFlow Messages</h3>
+            <p class="text-gray-600 mb-6">Select a conversation from the sidebar to start messaging with your team members, or start a new conversation.</p>
+            <div class="flex justify-center space-x-3">
+                <button id="startNewFromList" class="px-4 py-2 bg-dark-teal text-white rounded-lg hover:bg-dark-cyan">
+                    <i class="fas fa-plus mr-2"></i>New Conversation
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chat Info Modal -->
+<div id="chatInfoModal" class="modal">
+    <div class="modal-content max-w-md">
+        <div class="p-6 border-b border-gray-200">
+            <h3 class="text-xl font-bold text-ink-black">User Information</h3>
+        </div>
+        <div class="p-6">
+            <div class="mb-6">
+                <div class="flex items-center mb-4">
+                    <div id="infoAvatar" class="w-16 h-16 rounded-full bg-dark-teal flex items-center justify-center text-white text-xl font-bold mr-4">
+                    </div>
+                    <div>
+                        <h4 id="infoName" class="font-bold text-lg"></h4>
+                        <p id="infoJobPosition" class="text-gray-600"></p>
+                        <div class="flex items-center mt-1">
+                            <span id="infoStatus" class="text-xs px-2 py-1 rounded-full bg-gray-100"></span>
+                            <span id="infoLastSeen" class="text-xs text-gray-500 ml-2"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-sm text-gray-500">Department</label>
+                        <p id="infoDepartment" class="font-medium"></p>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-500">Email</label>
+                        <p id="infoEmail" class="font-medium"></p>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-500">Projects</label>
+                        <p id="infoProjects" class="font-medium"></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-end pt-4 mt-6 border-t border-gray-200">
+                <button type="button" id="closeChatInfoBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // WebSocket connection for real-time messaging
+    let chatSocket = null;
+    let currentChatUserId = null;
+    let typingTimeout = null;
+    let isTyping = false;
+    let keepAliveInterval = null;
+    let reconnectTimeout = null;
+    let reconnectAttempts = 0;
+    
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        setupEventListeners();
+        connectWebSocket();
+        updateHeaderUnreadCount();
+        
+        // Request notification permission
+        if ("Notification" in window) {
+            Notification.requestPermission();
+        }
+    });
+    
+    function connectWebSocket() {
+        const wsScheme = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        const wsUrl = wsScheme + window.location.host + '/ws/messages/';
+        
+        chatSocket = new WebSocket(wsUrl);
+        
+        chatSocket.onopen = function(e) {
+            console.log('WebSocket connection established');
+            startKeepAlive();
+            
+            chatSocket.send(JSON.stringify({
+                'type': 'authenticate',
+                'user_id': {{ user.id }},
+                'user_name': '{{ user.get_full_name }}'
+            }));
+        };
+        
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+
+            switch(data.type) {
+                case 'direct_message':
+                    handleIncomingMessage(data);
+                    break;
+                case 'typing':
+                    handleTypingIndicator(data);
+                    break;
+                case 'user_status':
+                    updateUserStatus(data);
+                    break;
+                case 'message_read':
+                    updateMessageReadStatus(data);
+                    break;
+                case 'ping':
+                    chatSocket.send(JSON.stringify({'type': 'pong'}));
+                    break;
+                default:
+                    console.debug('Unhandled WS message type:', data.type, data);
+            }
+        };
+
+        chatSocket.onclose = function(e) {
+            console.warn('WebSocket closed', e);
+            stopKeepAlive();
+            
+            if (!reconnectTimeout) {
+                const delay = Math.min(30000, 2000 * Math.pow(1.5, reconnectAttempts));
+                reconnectAttempts += 1;
+                reconnectTimeout = setTimeout(() => {
+                    reconnectTimeout = null;
+                    connectWebSocket();
+                }, delay);
+            }
+        };
+
+        chatSocket.onerror = function(e) {
+            console.error('WebSocket error:', e);
+        };
+    }
+
+    function startKeepAlive() {
+        stopKeepAlive();
+        keepAliveInterval = setInterval(() => {
+            if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
+                try {
+                    chatSocket.send(JSON.stringify({type: 'pong'}));
+                } catch (err) {
+                    console.error('Keepalive send failed', err);
+                }
+            }
+        }, 25000);
+    }
+
+    function stopKeepAlive() {
+        if (keepAliveInterval) {
+            clearInterval(keepAliveInterval);
+            keepAliveInterval = null;
+        }
+    }
+    
+    function setupEventListeners() {
+        // Conversation list
+        document.getElementById('conversationsList')?.addEventListener('click', function(e) {
+            const item = e.target.closest('.conversation-item');
+            if (item) {
+                e.preventDefault();
+                const userId = item.getAttribute('data-user-id');
+                selectConversation(userId, item);
+            }
+        });
+        
+        // Team member clicks
+        document.getElementById('teamMembersList')?.addEventListener('click', function(e) {
+            const item = e.target.closest('.team-member-item');
+            if (item) {
+                e.preventDefault();
+                const userId = item.getAttribute('data-user-id');
+                startNewConversation(userId);
+            }
+        });
+        
+        // Filter buttons
+        document.getElementById('filterAll')?.addEventListener('click', () => setActiveFilter('all'));
+        document.getElementById('filterUnread')?.addEventListener('click', () => setActiveFilter('unread'));
+        document.getElementById('filterOnline')?.addEventListener('click', () => setActiveFilter('online'));
+        
+        // Start new conversation
+        document.getElementById('startNewFromList')?.addEventListener('click', function() {
+            document.getElementById('searchUsers').focus();
+        });
+        
+        // Search users
+        document.getElementById('searchUsers')?.addEventListener('input', function() {
+            const query = this.value;
+            if (query.length >= 2) {
+                searchUsers(query);
+            }
+        });
+        
+        // Send message button
+        document.getElementById('sendMessageBtn')?.addEventListener('click', sendMessage);
+        
+        // Send message on Enter key
+        document.getElementById('messageInput')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        // Typing indicator
+        document.getElementById('messageInput')?.addEventListener('input', function() {
+            sendTypingIndicator(true);
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                sendTypingIndicator(false);
+            }, 1000);
+        });
+        
+        // Chat info button
+        document.getElementById('chatInfoBtn')?.addEventListener('click', function() {
+            if (currentChatUserId) {
+                loadUserInfo(currentChatUserId);
+            }
+        });
+        
+        // Close chat info modal
+        document.getElementById('closeChatInfoBtn')?.addEventListener('click', function() {
+            document.getElementById('chatInfoModal').classList.remove('active');
+        });
+    }
+    
+    function selectConversation(userId, conversationElement) {
+        // Update active conversation styling
+        document.querySelectorAll('.conversation-item').forEach(item => {
+            item.classList.remove('conversation-active');
+        });
+        
+        if (conversationElement) {
+            conversationElement.classList.add('conversation-active');
+        }
+        
+        // Load the conversation
+        loadConversation(userId);
+        
+        // Mark as read
+        markAsRead(userId);
+        
+        // Remove unread badge
+        const unreadBadge = conversationElement?.querySelector('.unread-badge');
+        if (unreadBadge) unreadBadge.remove();
+    }
+    
+    function loadConversation(userId) {
+        try {
+            currentChatUserId = userId;
+            
+            // Show chat area, hide no chat view
+            document.getElementById('noChatSelected').style.display = 'none';
+            document.getElementById('chatArea').classList.add('active');
+            
+            // Show loading
+            const container = document.getElementById('messagesContainer');
+            if (!container) return;
+            
+            container.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                    <p>Loading conversation...</p>
+                </div>
+            `;
+            
+            // Clear message input
+            document.getElementById('messageInput').value = '';
+            
+            // Load conversation messages
+            fetch(`/api/messages/conversation/${userId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayMessages(data.messages, data.other_user);
+                    } else {
+                        console.error('Failed to load conversation:', data.error);
+                        container.innerHTML = `
+                            <div class="text-center py-8 text-gray-500">
+                                <i class="fas fa-exclamation-triangle text-2xl mb-2"></i>
+                                <p>Error loading conversation</p>
+                                <p class="text-sm">${data.error || 'Unknown error'}</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading conversation:', error);
+                    container.innerHTML = `
+                        <div class="text-center py-8 text-gray-500">
+                            <i class="fas fa-exclamation-triangle text-2xl mb-2"></i>
+                            <p>Error loading conversation</p>
+                            <p class="text-sm">Network error</p>
+                        </div>
+                    `;
+                });
+                
+        } catch (err) {
+            console.error('loadConversation error:', err);
+        }
+    }
+    
+    function displayMessages(messages, otherUser) {
+        const container = document.getElementById('messagesContainer');
+        if (!container || !otherUser) return;
+        
+        // Update chat header
+        updateChatHeader(otherUser);
+        
+        if (messages.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <i class="fas fa-comment-alt text-3xl mb-4"></i>
+                    <p>No messages yet</p>
+                    <p class="text-sm mt-1">Start the conversation with ${otherUser.name}</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Group messages by date
+        const groupedMessages = {};
+        messages.forEach(msg => {
+            const date = msg.date || new Date(msg.timestamp).toISOString().split('T')[0];
+            if (!groupedMessages[date]) {
+                groupedMessages[date] = [];
+            }
+            groupedMessages[date].push(msg);
+        });
+        
+        let html = '';
+        for (const [date, dateMessages] of Object.entries(groupedMessages)) {
+            html += `<div class="flex justify-center my-6">
+                        <span class="bg-white px-3 py-1 rounded-full text-xs text-gray-500">${formatDate(date)}</span>
+                    </div>`;
+            
+            dateMessages.forEach(msg => {
+                const isSent = msg.is_sent;
+                html += `
+                    <div class="flex mb-4 ${isSent ? 'justify-end' : ''}">
+                        ${!isSent ? `
+                            <div class="w-8 h-8 rounded-full ${msg.avatar_color} flex items-center justify-center text-white text-xs font-bold mr-2">
+                                ${msg.initials}
+                            </div>
+                        ` : ''}
+                        <div class="max-w-xs md:max-w-md">
+                            <div class="${isSent ? 'message-sent' : 'message-received'} p-3">
+                                <p>${escapeHtml(msg.content)}</p>
+                            </div>
+                            <div class="flex ${isSent ? 'justify-end' : ''} mt-1">
+                                <span class="text-xs text-gray-500 ${isSent ? 'mr-2' : ''}">
+                                    ${formatTime(msg.timestamp)}
+                                    ${isSent && msg.is_read ? ' • Read' : ''}
+                                </span>
+                            </div>
+                        </div>
+                        ${isSent ? `
+                            <div class="w-8 h-8 rounded-full bg-golden-orange flex items-center justify-center text-white text-xs font-bold ml-2">
+                                {{ user.first_name|first }}{{ user.last_name|first }}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+        }
+        
+        container.innerHTML = html;
+        container.scrollTop = container.scrollHeight;
+    }
+    
+    function updateChatHeader(otherUser) {
+        const chatAvatar = document.getElementById('chatAvatar');
+        const chatUserName = document.getElementById('chatUserName');
+        const chatUserRole = document.getElementById('chatUserRole');
+        const chatOnlineStatus = document.getElementById('chatOnlineStatus');
+        
+        if (chatAvatar) {
+            chatAvatar.textContent = otherUser.initials;
+            chatAvatar.className = `w-10 h-10 rounded-full ${otherUser.avatar_color} flex items-center justify-center text-white font-bold`;
+        }
+        
+        if (chatUserName) chatUserName.textContent = otherUser.name;
+        if (chatUserRole) chatUserRole.textContent = otherUser.job_position;
+        if (chatOnlineStatus) {
+            chatOnlineStatus.style.display = otherUser.is_online ? 'block' : 'none';
+        }
+    }
+    
+    function sendMessage() {
+        const messageInput = document.getElementById('messageInput');
+        const message = messageInput.value.trim();
+        
+        if (!message || !currentChatUserId) return;
+        
+        // Send via WebSocket
+        if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
+            chatSocket.send(JSON.stringify({
+                'type': 'direct_message',
+                'recipient_id': currentChatUserId,
+                'content': message
+            }));
+        }
+        
+        // Send via REST API for persistence
+        fetch('/api/messages/send/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                'recipient_id': currentChatUserId,
+                'content': message
+            })
+        }).catch(error => console.error('Error sending message:', error));
+        
+        // Clear input
+        messageInput.value = '';
+        sendTypingIndicator(false);
+    }
+    
+    function sendTypingIndicator(isTyping) {
+        if (isTyping === isTyping) return;
+        
+        isTyping = isTyping;
+        
+        if (chatSocket && chatSocket.readyState === WebSocket.OPEN && currentChatUserId) {
+            chatSocket.send(JSON.stringify({
+                'type': 'typing',
+                'recipient_id': currentChatUserId,
+                'is_typing': isTyping
+            }));
+        }
+    }
+    
+    function handleIncomingMessage(data) {
+        if (data.recipient_id == {{ user.id }}) {
+            if (data.sender_id == currentChatUserId) {
+                addMessageToChat(data);
+                sendReadReceipt(data.message_id);
+            } else {
+                showNotification(data);
+                updateConversationList(data);
+                updateHeaderUnreadCount();
+            }
+        } else if (data.sender_id == {{ user.id }} && data.recipient_id == currentChatUserId) {
+            addMessageToChat(data);
+        }
+    }
+    
+    function addMessageToChat(data) {
+        const container = document.getElementById('messagesContainer');
+        if (!container) return;
+        
+        const isSent = data.sender_id == {{ user.id }};
+        
+        // Check if we need to add date separator
+        const messageDate = new Date(data.timestamp).toISOString().split('T')[0];
+        const lastDateElement = container.querySelector('.text-gray-500:last-of-type');
+        
+        if (!lastDateElement || !lastDateElement.textContent.includes(formatDate(messageDate))) {
+            const dateSeparator = `
+                <div class="flex justify-center my-6">
+                    <span class="bg-white px-3 py-1 rounded-full text-xs text-gray-500">${formatDate(messageDate)}</span>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', dateSeparator);
+        }
+        
+        const messageHtml = `
+            <div class="flex mb-4 ${isSent ? 'justify-end' : ''}">
+                ${!isSent ? `
+                    <div class="w-8 h-8 rounded-full ${data.avatar_color} flex items-center justify-center text-white text-xs font-bold mr-2">
+                        ${data.initials}
+                    </div>
+                ` : ''}
+                <div class="max-w-xs md:max-w-md">
+                    <div class="${isSent ? 'message-sent' : 'message-received'} p-3">
+                        <p>${escapeHtml(data.content)}</p>
+                    </div>
+                    <div class="flex ${isSent ? 'justify-end' : ''} mt-1">
+                        <span class="text-xs text-gray-500 ${isSent ? 'mr-2' : ''}">
+                            ${formatTime(data.timestamp)}
+                            ${isSent ? ' • Sent' : ''}
+                        </span>
+                    </div>
+                </div>
+                ${isSent ? `
+                    <div class="w-8 h-8 rounded-full bg-golden-orange flex items-center justify-center text-white text-xs font-bold ml-2">
+                        {{ user.first_name|first }}{{ user.last_name|first }}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+        
+        container.insertAdjacentHTML('beforeend', messageHtml);
+        container.scrollTop = container.scrollHeight;
+    }
+    
+    function handleTypingIndicator(data) {
+        if (data.sender_id == currentChatUserId) {
+            const typingIndicator = document.getElementById('typingIndicator');
+            const typingUser = document.getElementById('typingUser');
+            
+            if (data.is_typing) {
+                typingUser.textContent = data.sender_name;
+                typingIndicator.classList.remove('hidden');
+            } else {
+                typingIndicator.classList.add('hidden');
+            }
+        }
+    }
+    
+    function updateUserStatus(data) {
+        // Update in conversation list
+        const conversationItem = document.querySelector(`.conversation-item[data-user-id="${data.user_id}"]`);
+        if (conversationItem) {
+            const onlineIndicator = conversationItem.querySelector('.online-indicator');
+            if (onlineIndicator) {
+                onlineIndicator.style.display = data.is_online ? 'block' : 'none';
+            }
+        }
+        
+        // Update in team member list
+        const teamMemberItem = document.querySelector(`.team-member-item[data-user-id="${data.user_id}"]`);
+        if (teamMemberItem) {
+            const onlineIndicator = teamMemberItem.querySelector('.online-indicator');
+            if (onlineIndicator) {
+                onlineIndicator.style.display = data.is_online ? 'block' : 'none';
+            }
+        }
+        
+        // Update chat header if active
+        if (currentChatUserId == data.user_id) {
+            const chatOnlineStatusEl = document.getElementById('chatOnlineStatus');
+            if (chatOnlineStatusEl) {
+                chatOnlineStatusEl.style.display = data.is_online ? 'block' : 'none';
+            }
+        }
+    }
+    
+    function updateMessageReadStatus(data) {
+        const messages = document.querySelectorAll('.message-sent');
+        messages.forEach(msg => {
+            const timeElement = msg.parentElement.querySelector('.text-gray-500');
+            if (timeElement && timeElement.textContent.includes('Sent')) {
+                timeElement.textContent = timeElement.textContent.replace('Sent', 'Read');
+            }
+        });
+    }
+    
+    function markAsRead(userId) {
+        fetch(`/api/messages/mark_read/${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        }).catch(error => console.error('Error marking as read:', error));
+    }
+    
+    function sendReadReceipt(messageId) {
+        if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
+            chatSocket.send(JSON.stringify({
+                'type': 'message_read',
+                'message_id': messageId,
+                'recipient_id': currentChatUserId
+            }));
+        }
+    }
+    
+    function startNewConversation(userId) {
+        fetch('/api/messages/start_conversation/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                'recipient_id': userId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show empty conversation
+                displayMessages([], {
+                    name: data.name,
+                    initials: data.initials,
+                    avatar_color: data.avatar_color,
+                    job_position: data.job_position,
+                    is_online: data.is_online
+                });
+                
+                // Switch to chat view
+                document.getElementById('noChatSelected').style.display = 'none';
+                document.getElementById('chatArea').classList.add('active');
+                
+                if (!data.has_existing_conversation) {
+                    addToConversationsList(data);
+                }
+            }
+        })
+        .catch(error => console.error('Error starting conversation:', error));
+    }
+    
+    function addToConversationsList(data) {
+        const conversationsList = document.getElementById('conversationsList');
+        if (!conversationsList) return;
+        
+        const conversationHtml = `
+            <div class="p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition conversation-item" 
+                 data-user-id="${data.user_id}"
+                 data-unread="0">
+                <div class="flex items-start">
+                    <div class="relative">
+                        <div class="w-12 h-12 rounded-full ${data.avatar_color} flex items-center justify-center text-white font-bold">
+                            ${data.initials}
+                        </div>
+                        ${data.is_online ? '<div class="online-indicator"></div>' : ''}
+                    </div>
+                    <div class="ml-3 flex-1">
+                        <div class="flex justify-between items-start">
+                            <h3 class="font-medium text-ink-black">${data.name}</h3>
+                            <span class="text-xs text-gray-500">Just now</span>
+                        </div>
+                        <p class="text-sm text-gray-600 truncate">Start a conversation...</p>
+                        <div class="flex justify-between items-center mt-1">
+                            <span class="text-xs text-gray-500">${data.job_position}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        conversationsList.insertAdjacentHTML('afterbegin', conversationHtml);
+    }
+    
+    function searchUsers(query) {
+        fetch(`/api/messages/search_users/?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSearchResults(data.results);
+                }
+            })
+            .catch(error => console.error('Error searching users:', error));
+    }
+    
+    function showSearchResults(results) {
+        const container = document.getElementById('conversationsList');
+        if (!container) return;
+        
+        if (results.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <p>No users found</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '<div class="p-2 bg-gray-50"><h4 class="text-sm font-medium text-gray-700 mb-2">Search Results</h4></div>';
+        
+        results.forEach(user => {
+            html += `
+                <div class="p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition search-result-item" 
+                     data-user-id="${user.id}">
+                    <div class="flex items-center">
+                        <div class="relative">
+                            <div class="w-10 h-10 rounded-full ${user.avatar_color} flex items-center justify-center text-white text-sm font-bold">
+                                ${user.name.split(' ').map(n => n[0]).join('')}
+                            </div>
+                            ${user.is_online ? '<div class="online-indicator" style="width: 8px; height: 8px;"></div>' : ''}
+                        </div>
+                        <div class="ml-3 flex-1">
+                            <h4 class="text-sm font-medium text-ink-black">${user.name}</h4>
+                            <p class="text-xs text-gray-500">${user.job_position} • ${user.project}</p>
+                        </div>
+                        <button class="px-3 py-1 bg-dark-teal text-white text-xs rounded hover:bg-dark-cyan start-chat-btn">
+                            Message
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+        
+        // Add event listeners
+        document.querySelectorAll('.search-result-item .start-chat-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const userId = this.closest('.search-result-item').getAttribute('data-user-id');
+                startNewConversation(userId);
+            });
+        });
+    }
+    
+    function loadUserInfo(userId) {
+        const conversationItem = document.querySelector(`.conversation-item[data-user-id="${userId}"]`);
+        if (conversationItem) {
+            const name = conversationItem.querySelector('.font-medium')?.textContent || '';
+            const jobPosition = conversationItem.querySelector('.text-gray-500')?.textContent || '';
+            const initials = conversationItem.querySelector('.font-bold')?.textContent || '';
+            const avatarColor = conversationItem.querySelector('.rounded-full')?.className.match(/bg-\w+/)?.[0] || 'bg-dark-teal';
+            
+            document.getElementById('infoName').textContent = name;
+            document.getElementById('infoJobPosition').textContent = jobPosition;
+            document.getElementById('infoAvatar').textContent = initials;
+            document.getElementById('infoAvatar').className = `w-16 h-16 rounded-full ${avatarColor} flex items-center justify-center text-white text-xl font-bold mr-4`;
+            
+            const onlineIndicatorEl = conversationItem.querySelector('.online-indicator');
+            const isOnline = onlineIndicatorEl ? (onlineIndicatorEl.style.display !== 'none') : false;
+            document.getElementById('infoStatus').textContent = isOnline ? 'Online' : 'Offline';
+            document.getElementById('infoStatus').className = `text-xs px-2 py-1 rounded-full ${isOnline ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`;
+            
+            document.getElementById('chatInfoModal').classList.add('active');
+        }
+    }
+    
+    function setActiveFilter(filter) {
+        // Update button styles
+        document.querySelectorAll('#chatSidebar button').forEach(btn => {
+            btn.classList.remove('filter-active', 'bg-dark-teal', 'text-white');
+            btn.classList.add('bg-gray-100', 'text-gray-700');
+        });
+        
+        const activeButton = document.getElementById(`filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`);
+        if (activeButton) {
+            activeButton.classList.remove('bg-gray-100', 'text-gray-700');
+            activeButton.classList.add('filter-active', 'bg-dark-teal', 'text-white');
+        }
+        
+        // Filter conversations
+        const conversations = document.querySelectorAll('.conversation-item');
+        conversations.forEach(conv => {
+            switch(filter) {
+                case 'all':
+                    conv.style.display = 'block';
+                    break;
+                case 'unread':
+                    const unreadCount = parseInt(conv.getAttribute('data-unread'));
+                    conv.style.display = unreadCount > 0 ? 'block' : 'none';
+                    break;
+                case 'online':
+                    const onlineEl = conv.querySelector('.online-indicator');
+                    const convIsOnline = onlineEl ? (onlineEl.style.display !== 'none') : false;
+                    conv.style.display = convIsOnline ? 'block' : 'none';
+                    break;
+            }
+        });
+    }
+    
+    function showNotification(data) {
+        if ("Notification" in window && Notification.permission === "granted") {
+            new Notification(`New message from ${data.sender_name}`, {
+                body: data.content.length > 50 ? data.content.substring(0, 50) + '...' : data.content,
+                icon: '/static/images/logo.png'
+            });
+        }
+    }
+    
+    function updateHeaderUnreadCount() {
+        fetch('/api/messages/unread_count/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const unreadBadge = document.querySelector('header .bg-golden-orange');
+                    if (data.unread_count > 0) {
+                        if (unreadBadge) {
+                            unreadBadge.textContent = data.unread_count;
+                        } else {
+                            const envelopeBtn = document.querySelector('header .fa-envelope')?.closest('div');
+                            if (envelopeBtn) {
+                                const badge = document.createElement('span');
+                                badge.className = 'absolute -top-1 -right-1 bg-golden-orange text-white text-xs w-5 h-5 flex items-center justify-center rounded-full';
+                                badge.textContent = data.unread_count;
+                                envelopeBtn.appendChild(badge);
+                            }
+                        }
+                    } else if (unreadBadge) {
+                        unreadBadge.remove();
+                    }
+                }
+            })
+            .catch(error => console.error('Error updating unread count:', error));
+    }
+    
+    function updateConversationList(data) {
+        const conversationItem = document.querySelector(`.conversation-item[data-user-id="${data.sender_id}"]`);
+        if (conversationItem) {
+            const lastMessageElement = conversationItem.querySelector('.text-gray-600');
+            if (lastMessageElement) {
+                lastMessageElement.textContent = data.content.length > 50 ? data.content.substring(0, 50) + '...' : data.content;
+            }
+            
+            const timeElement = conversationItem.querySelector('.text-gray-500');
+            if (timeElement) {
+                timeElement.textContent = 'Just now';
+            }
+            
+            const unreadBadge = conversationItem.querySelector('.unread-badge');
+            if (unreadBadge) {
+                unreadBadge.textContent = parseInt(unreadBadge.textContent) + 1;
+            } else {
+                const badge = document.createElement('div');
+                badge.className = 'unread-badge';
+                badge.textContent = '1';
+                conversationItem.querySelector('.flex.justify-between').appendChild(badge);
+            }
+            
+            const container = document.getElementById('conversationsList');
+            if (container) {
+                container.insertBefore(conversationItem, container.firstChild);
+            }
+        }
+    }
+    
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        if (date.toDateString() === today.toDateString()) {
+            return 'Today';
+        } else if (date.toDateString() === yesterday.toDateString()) {
+            return 'Yesterday';
+        } else {
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+    }
+    
+    function formatTime(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+</script>
+{% endblock %}

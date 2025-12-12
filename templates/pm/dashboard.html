@@ -1,0 +1,753 @@
+<!-- templates/pm/dashboard.html -->
+{% extends 'pm/base.html' %}
+{% load humanize %}
+
+{% block page_title %}Project Manager Dashboard{% endblock %}
+
+{% block content %}
+    <!-- Project Overview -->
+    <div class="mb-8">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-ink-black">
+                {% if active_project %}
+                    {{ active_project.name }}
+                {% else %}
+                    No Active Project
+                {% endif %}
+            </h2>
+            {% if active_project %}
+            <div class="flex space-x-3">
+                <button id="manageTeamBtn" class="px-4 py-2 bg-dark-teal text-white rounded-lg flex items-center">
+                    <i class="fas fa-users mr-2"></i>
+                    <span>Manage Team</span>
+                </button>
+                <button id="scheduleMeetingBtn" class="px-4 py-2 bg-dark-cyan text-white rounded-lg flex items-center">
+                    <i class="fas fa-calendar-alt mr-2"></i>
+                    <span>Schedule Meeting</span>
+                </button>
+            </div>
+            {% endif %}
+        </div>
+        
+        {% if active_project %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-gray-500 text-sm">Project Progress</p>
+                        <h3 class="text-2xl font-bold text-ink-black mt-1">{{ project_progress }}%</h3>
+                    </div>
+                    <div class="p-3 bg-dark-teal bg-opacity-10 rounded-lg">
+                        <i class="fas fa-chart-line text-dark-teal text-xl"></i>
+                    </div>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2 mt-4">
+                    <div class="bg-dark-teal h-2 rounded-full" style="width: {{ project_progress }}%"></div>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">
+                    {{ completed_tasks }} of {{ total_tasks }} tasks completed
+                </p>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-gray-500 text-sm">Active Tasks</p>
+                        <h3 class="text-2xl font-bold text-ink-black mt-1">{{ active_tasks_count }}</h3>
+                    </div>
+                    <div class="p-3 bg-dark-cyan bg-opacity-10 rounded-lg">
+                        <i class="fas fa-tasks text-dark-cyan text-xl"></i>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-4">
+                    <span class="{% if overdue_count > 0 %}text-rusty-spice{% else %}text-dark-cyan{% endif %} font-medium">
+                        {{ overdue_count }} overdue
+                    </span>
+                </p>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-gray-500 text-sm">Team Members</p>
+                        <h3 class="text-2xl font-bold text-ink-black mt-1">{{ team_members_count }}</h3>
+                    </div>
+                    <div class="p-3 bg-golden-orange bg-opacity-10 rounded-lg">
+                        <i class="fas fa-users text-golden-orange text-xl"></i>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-4">
+                    <span class="text-dark-cyan font-medium">{{ team_members_count }} active</span>
+                </p>
+            </div>
+        </div>
+        {% else %}
+        <div class="bg-white rounded-xl shadow-sm p-8 text-center">
+            <i class="fas fa-project-diagram text-4xl text-gray-300 mb-4"></i>
+            <h3 class="text-lg font-medium text-gray-700 mb-2">No Active Project</h3>
+            <p class="text-gray-500 mb-4">You are not currently managing any active projects.</p>
+            <a href="{% url 'pm_projects' %}" class="inline-flex items-center px-4 py-2 bg-dark-teal text-white rounded-lg hover:bg-dark-cyan transition">
+                <i class="fas fa-plus mr-2"></i>
+                Create New Project
+            </a>
+        </div>
+        {% endif %}
+    </div>
+    
+    {% if active_project %}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Team Members -->
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-ink-black">Team Members</h3>
+                <button id="manageTeamBtn2" class="text-dark-teal text-sm font-medium">Manage</button>
+            </div>
+            
+            <div class="space-y-4">
+                {% for member_info in member_data|slice:":4" %}
+                {% with member=member_info.member %}
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 rounded-full {{ member_info.color_class }} flex items-center justify-center text-white font-bold">
+                            {{ member_info.initials }}
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium">{{ member_info.user_full_name }}</p>
+                            <p class="text-xs text-gray-500">{{ member.get_role_display }}</p>
+                        </div>
+                    </div>
+                    <span class="text-xs px-2 py-1 {{ member_info.status_class }} rounded-full">
+                        {{ member_info.status_text }}
+                    </span>
+                </div>
+                {% endwith %}
+                {% empty %}
+                <p class="text-gray-500 text-center py-2">No team members yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <h3 class="text-lg font-semibold text-ink-black mb-4">Quick Actions</h3>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <button id="createTaskBtn" class="p-3 border border-gray-200 rounded-lg hover:bg-pearl-aqua hover:bg-opacity-10 transition text-center">
+                    <i class="fas fa-plus text-dark-teal text-lg mb-1"></i>
+                    <p class="text-xs font-medium">Create Task</p>
+                </button>
+                
+                <button id="teamMeetingBtn" class="p-3 border border-gray-200 rounded-lg hover:bg-pearl-aqua hover:bg-opacity-10 transition text-center">
+                    <i class="fas fa-users text-golden-orange text-lg mb-1"></i>
+                    <p class="text-xs font-medium">Team Meeting</p>
+                </button>
+                
+                <button id="viewReportsBtn" class="p-3 border border-gray-200 rounded-lg hover:bg-pearl-aqua hover:bg-opacity-10 transition text-center">
+                    <i class="fas fa-chart-bar text-rusty-spice text-lg mb-1"></i>
+                    <p class="text-xs font-medium">Reports</p>
+                </button>
+                
+                <a href="{% url 'pm_tasks' %}" class="p-3 border border-gray-200 rounded-lg hover:bg-pearl-aqua hover:bg-opacity-10 transition text-center">
+                    <i class="fas fa-tasks text-dark-cyan text-lg mb-1"></i>
+                    <p class="text-xs font-medium">View Tasks</p>
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tasks Under Review -->
+    {% if review_tasks %}
+    <div class="mt-8 bg-white rounded-xl shadow-sm p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-semibold text-ink-black">Tasks Under Review</h3>
+            <span class="px-3 py-1 bg-rusty-spice bg-opacity-10 text-rusty-spice rounded-full text-sm">
+                {{ review_tasks|length }} pending approval
+            </span>
+        </div>
+        
+        <div class="space-y-4">
+            {% for task_info in review_tasks|slice:":3" %}
+            {% with task=task_info.task %}
+            <div class="border-l-4 border-rusty-spice pl-4 py-3 task-status-review">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <h4 class="font-medium">{{ task.title }}</h4>
+                        <p class="text-sm text-gray-600 mt-1">{{ task.description|truncatechars:100 }}</p>
+                        
+                        <div class="flex items-center mt-2 space-x-4">
+                            {% if task_info.initials %}
+                            <div class="flex items-center">
+                                <div class="w-6 h-6 rounded-full bg-golden-orange flex items-center justify-center text-white text-xs">
+                                    {{ task_info.initials }}
+                                </div>
+                                <span class="text-xs text-gray-500 ml-1">{{ task_info.user_full_name }}</span>
+                            </div>
+                            {% endif %}
+                            <span class="text-xs {{ task_info.priority_class }} px-2 py-1 rounded-full">
+                                {{ task.get_priority_display }}
+                            </span>
+                            <span class="text-xs text-gray-500">Due: {{ task_info.due_date_formatted }}</span>
+                        </div>
+                        
+                        <!-- Progress Details -->
+                        <div class="mt-3 p-3 bg-gray-50 rounded-lg">
+                            <div class="flex justify-between text-sm mb-2">
+                                <span>Progress: {{ task_info.progress }}%</span>
+                                <span>Time Spent: {{ task_info.actual_hours }}h / {{ task_info.estimated_hours }}h estimated</span>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button class="text-xs bg-dark-teal text-white px-3 py-1 rounded hover:bg-dark-cyan transition approve-task" data-task="{{ task.id }}">
+                                    <i class="fas fa-check mr-1"></i> Approve
+                                </button>
+                                <button class="text-xs bg-white border border-gray-300 text-gray-700 px-3 py-1 rounded hover:bg-gray-50 transition request-changes" data-task="{{ task.id }}">
+                                    <i class="fas fa-redo mr-1"></i> Request Changes
+                                </button>
+                                <a href="{% url 'pm_project_detail' active_project.id %}" class="text-xs bg-white border border-gray-300 text-gray-700 px-3 py-1 rounded hover:bg-gray-50 transition">
+                                    <i class="fas fa-eye mr-1"></i> Details
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endwith %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Recent Messages -->
+    {% if recent_messages %}
+    <div class="mt-8 bg-white rounded-xl shadow-sm p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-semibold text-ink-black">Recent Messages</h3>
+            <a href="#" class="text-dark-teal text-sm font-medium">View All</a>
+        </div>
+        
+        <div class="space-y-4">
+            {% for message in recent_messages|slice:":3" %}
+            <div class="flex p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition">
+                <div class="w-10 h-10 rounded-full bg-dark-teal flex items-center justify-center text-white font-bold mr-4">
+                    {{ message.sender.first_name|first }}{{ message.sender.last_name|first }}
+                </div>
+                <div class="flex-1">
+                    <div class="flex justify-between">
+                        <h4 class="font-medium">{{ message.sender.get_full_name }}</h4>
+                        <span class="text-xs text-gray-500">{{ message.created_at|timesince }} ago</span>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-1">{{ message.content|truncatechars:120 }}</p>
+                    {% if message.task %}
+                    <div class="flex mt-2">
+                        <span class="text-xs px-2 py-1 bg-dark-teal bg-opacity-10 text-dark-teal rounded mr-2">#task-{{ message.task.id }}</span>
+                        <span class="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">{{ message.task.title|truncatechars:30 }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+    
+{% endblock %}
+<!-- templates/pm/dashboard.html (extra_js block) -->
+{% block extra_js %}
+<script>
+    // Get CSRF token for AJAX requests
+    function getCSRFToken() {
+        const name = 'csrftoken';
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Modal functionality
+    const modals = {
+        newTask: document.getElementById('newTaskModal'),
+        manageTeam: document.getElementById('manageTeamModal'),
+        scheduleMeeting: document.getElementById('scheduleMeetingModal'),
+        requestChanges: document.getElementById('requestChangesModal'),
+        confirmation: document.getElementById('confirmationModal'),
+        success: document.getElementById('successModal')
+    };
+
+    // Modal helper functions
+    function showModal(modal) {
+        if (modal) {
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function hideModal(modal) {
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    }
+
+    // Show success message
+    function showSuccess(title, message) {
+        document.getElementById('successTitle').textContent = title;
+        document.getElementById('successMessage').textContent = message;
+        showModal(modals.success);
+    }
+
+    // Show confirmation dialog
+    function showConfirmation(title, message, onConfirm) {
+        document.getElementById('confirmationTitle').textContent = title;
+        document.getElementById('confirmationMessage').textContent = message;
+        const confirmBtn = document.getElementById('confirmActionBtn');
+        
+        // Remove previous listeners
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+        
+        newConfirmBtn.addEventListener('click', function() {
+            onConfirm();
+            hideModal(modals.confirmation);
+        });
+        
+        showModal(modals.confirmation);
+    }
+
+    // Set today's date for date inputs
+    function setTodayForDateInputs() {
+        const today = new Date().toISOString().split('T')[0];
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+        
+        // Set default dates
+        if (document.getElementById('taskDueDate')) {
+            document.getElementById('taskDueDate').value = tomorrowStr;
+            document.getElementById('taskDueDate').min = today;
+        }
+        
+        if (document.getElementById('meetingDate')) {
+            document.getElementById('meetingDate').value = tomorrowStr;
+            document.getElementById('meetingDate').min = today;
+        }
+    }
+
+    // 1. Task Creation
+    document.addEventListener('DOMContentLoaded', function() {
+        setTodayForDateInputs();
+        
+        // Task form submission
+        const taskForm = document.getElementById('newTaskForm');
+        if (taskForm) {
+            taskForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const taskData = {
+                    title: document.getElementById('taskTitle').value,
+                    project_id: document.getElementById('taskProject').value,
+                    assigned_to: document.getElementById('taskAssignee').value || null,
+                    task_type: document.getElementById('taskType').value,
+                    priority: document.getElementById('taskPriority').value,
+                    due_date: document.getElementById('taskDueDate').value,
+                    estimated_hours: document.getElementById('taskEstimatedHours').value,
+                    description: document.getElementById('taskDescription').value
+                };
+                
+                // Basic client-side validation to avoid server 'Missing required field' errors
+                taskData.title = (taskData.title || '').trim();
+                taskData.due_date = (taskData.due_date || '').trim();
+                taskData.estimated_hours = (taskData.estimated_hours || '').toString().trim();
+
+                if (!taskData.title) {
+                    alert('Please enter a task title.');
+                    return;
+                }
+                if (!taskData.project_id) {
+                    alert('Please select a project.');
+                    return;
+                }
+                if (!taskData.due_date) {
+                    alert('Please select a due date.');
+                    return;
+                }
+                if (!taskData.estimated_hours) {
+                    alert('Please enter estimated hours.');
+                    return;
+                }
+
+                console.log('Creating task with data:', taskData);
+
+                try {
+                    const response = await fetch("{% url 'create_task_api' %}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCSRFToken()
+                        },
+                        body: JSON.stringify(taskData)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showSuccess('Task Created', result.message);
+                        taskForm.reset();
+                        setTodayForDateInputs();
+                        setTimeout(() => {
+                            hideModal(modals.newTask);
+                            location.reload(); // Reload to show new task
+                        }, 1500);
+                    } else {
+                        alert('Error: ' + result.error);
+                    }
+                } catch (error) {
+                    alert('Network error: ' + error.message);
+                }
+            });
+        }
+        
+        // Team Management - load available employees only when opening the modal
+        const teamModal = document.getElementById('manageTeamModal');
+        async function loadAvailableEmployees() {
+            const projectIdEl = document.getElementById('teamProjectId');
+            if (!projectIdEl) return;
+            const projectId = projectIdEl.value;
+            if (!projectId) return;
+
+            try {
+                const response = await fetch(`/api/projects/${projectId}/available-employees/`);
+                const result = await response.json();
+
+                if (result.success) {
+                    const select = document.getElementById('availableEmployeeSelect');
+                    if (!select) return;
+                    select.innerHTML = '<option value="">Select Employee</option>';
+
+                    result.employees.forEach(employee => {
+                        const option = document.createElement('option');
+                        option.value = employee.id;
+                        option.textContent = `${employee.name} - ${employee.job_position}`;
+                        option.dataset.employee = JSON.stringify(employee);
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading employees:', error);
+            }
+        }
+
+        if (teamModal) {
+            // Show employee details when selected (attach only if element exists)
+            const availableSelect = document.getElementById('availableEmployeeSelect');
+            if (availableSelect) {
+                availableSelect.addEventListener('change', function() {
+                    const detailsDiv = document.getElementById('employeeDetails');
+                    const selectedOption = this.options[this.selectedIndex];
+
+                    if (selectedOption && selectedOption.value) {
+                        const employee = JSON.parse(selectedOption.dataset.employee);
+                        document.getElementById('employeeName').textContent = employee.name;
+                        document.getElementById('employeePosition').textContent = `Position: ${employee.job_position}`;
+                        document.getElementById('employeeDepartment').textContent = `Department: ${employee.department}`;
+                        document.getElementById('employeeSkills').textContent = `Skills: ${employee.skills}`;
+                        if (detailsDiv) detailsDiv.style.display = 'block';
+                    } else if (detailsDiv) {
+                        detailsDiv.style.display = 'none';
+                    }
+                });
+            }
+
+            // Add team member (attach only if button exists)
+            const addMemberBtn = document.getElementById('addMemberBtn');
+            if (addMemberBtn) {
+                addMemberBtn.addEventListener('click', async function() {
+                    const projectId = document.getElementById('teamProjectId').value;
+                    const employeeIdEl = document.getElementById('availableEmployeeSelect');
+                    const employeeId = employeeIdEl ? employeeIdEl.value : null;
+                    const role = document.getElementById('roleSelect').value;
+
+                    if (!employeeId) {
+                        alert('Please select an employee');
+                        return;
+                    }
+
+                    const memberData = {
+                        project_id: projectId,
+                        employee_id: employeeId,
+                        role: role
+                    };
+
+                    try {
+                        const response = await fetch("{% url 'add_team_member_api' %}", {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': getCSRFToken()
+                            },
+                            body: JSON.stringify(memberData)
+                        });
+
+                        const result = await response.json();
+
+                        if (result.success) {
+                            showSuccess('Team Member Added', result.message);
+
+                            // Update team members list
+                            const container = document.getElementById('currentTeamMembers');
+                            if (container) container.innerHTML = '';
+
+                            result.team_members.forEach(member => {
+                                const memberHtml = `
+                                    <div class="flex justify-between items-center p-3 border border-gray-200 rounded-lg" data-member-id="${member.id}">
+                                        <div class="flex items-center">
+                                            <div class="w-10 h-10 rounded-full bg-dark-teal flex items-center justify-center text-white font-bold">
+                                                ${member.initials}
+                                            </div>
+                                            <div class="ml-3">
+                                                <p class="font-medium">${member.name}</p>
+                                                <p class="text-sm text-gray-500">${member.role}</p>
+                                            </div>
+                                        </div>
+                                        <button class="text-rusty-spice hover:text-oxidized-iron remove-member" data-member-id="${member.id}">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                `;
+                                if (container) container.insertAdjacentHTML('beforeend', memberHtml);
+                            });
+
+                            // Reset form
+                            if (employeeIdEl) employeeIdEl.value = '';
+                            const detailsDiv = document.getElementById('employeeDetails');
+                            if (detailsDiv) detailsDiv.style.display = 'none';
+
+                            // Add event listeners to new remove buttons
+                            attachRemoveMemberListeners();
+                        } else {
+                            alert('Error: ' + result.error);
+                        }
+                    } catch (error) {
+                        alert('Network error: ' + error.message);
+                    }
+                });
+            }
+        }
+        
+        // Remove team member
+        function attachRemoveMemberListeners() {
+            document.querySelectorAll('.remove-member').forEach(button => {
+                button.addEventListener('click', function() {
+                    const memberId = this.getAttribute('data-member-id');
+                    const projectId = document.getElementById('teamProjectId').value;
+                    
+                    showConfirmation(
+                        'Remove Team Member',
+                        'Are you sure you want to remove this team member from the project?',
+                        async function() {
+                            try {
+                                const response = await fetch("{% url 'remove_team_member_api' %}", {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRFToken': getCSRFToken()
+                                    },
+                                    body: JSON.stringify({
+                                        project_id: projectId,
+                                        employee_id: memberId
+                                    })
+                                });
+                                
+                                const result = await response.json();
+                                
+                                if (result.success) {
+                                    showSuccess('Member Removed', result.message);
+                                    
+                                    // Remove from UI
+                                    const memberElement = document.querySelector(`[data-member-id="${memberId}"]`);
+                                    if (memberElement) {
+                                        memberElement.remove();
+                                    }
+                                } else {
+                                    alert('Error: ' + result.error);
+                                }
+                            } catch (error) {
+                                alert('Network error: ' + error.message);
+                            }
+                        }
+                    );
+                });
+            });
+        }
+        
+        attachRemoveMemberListeners();
+        
+        // Schedule meeting
+        const meetingForm = document.getElementById('scheduleMeetingForm');
+        if (meetingForm) {
+            meetingForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const meetingData = {
+                    title: document.getElementById('meetingTitle').value,
+                    date: document.getElementById('meetingDate').value,
+                    time: document.getElementById('meetingTime').value,
+                    project_id: document.getElementById('meetingProjectId').value,
+                    agenda: document.getElementById('meetingAgenda').value
+                };
+                
+                try {
+                    const response = await fetch("{% url 'schedule_meeting_api' %}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCSRFToken()
+                        },
+                        body: JSON.stringify(meetingData)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showSuccess('Meeting Scheduled', result.message);
+                        meetingForm.reset();
+                        setTodayForDateInputs();
+                        setTimeout(() => {
+                            hideModal(modals.scheduleMeeting);
+                        }, 1500);
+                    } else {
+                        alert('Error: ' + result.error);
+                    }
+                } catch (error) {
+                    alert('Network error: ' + error.message);
+                }
+            });
+        }
+        
+        // Task approval
+        document.querySelectorAll('.approve-task').forEach(button => {
+            button.addEventListener('click', function() {
+                const taskId = this.getAttribute('data-task');
+                showConfirmation(
+                    'Approve Task',
+                    'Are you sure you want to approve this task as completed?',
+                    async function() {
+                        try {
+                            const response = await fetch(`/api/tasks/${taskId}/approve/`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': getCSRFToken()
+                                },
+                                body: JSON.stringify({ task_id: taskId })
+                            });
+                            
+                            const result = await response.json();
+                            
+                            if (result.success) {
+                                showSuccess('Task Approved', result.message);
+                                setTimeout(() => {
+                                    location.reload();
+                                }, 1500);
+                            } else {
+                                alert('Error: ' + result.error);
+                            }
+                        } catch (error) {
+                            alert('Network error: ' + error.message);
+                        }
+                    }
+                );
+            });
+        });
+        
+        // Request changes
+        document.querySelectorAll('.request-changes').forEach(button => {
+            button.addEventListener('click', function() {
+                const taskId = this.getAttribute('data-task');
+                const taskElement = this.closest('.task-status-review');
+                const taskTitle = taskElement.querySelector('.font-medium').textContent;
+                const assigneeElement = taskElement.querySelector('.text-xs.text-gray-500.ml-1');
+                const assigneeName = assigneeElement ? assigneeElement.textContent : 'Unknown';
+                
+                document.getElementById('changeTaskId').value = taskId;
+                document.getElementById('changeTaskTitle').textContent = taskTitle;
+                document.getElementById('changeTaskAssignee').textContent = assigneeName;
+                
+                showModal(modals.requestChanges);
+            });
+        });
+        
+        // Request changes form
+        const changesForm = document.getElementById('requestChangesForm');
+        if (changesForm) {
+            changesForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const changeData = {
+                    task_id: document.getElementById('changeTaskId').value,
+                    feedback: document.getElementById('changeFeedback').value
+                };
+                
+                try {
+                    const response = await fetch(`/api/tasks/${changeData.task_id}/request-changes/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCSRFToken()
+                        },
+                        body: JSON.stringify(changeData)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showSuccess('Changes Requested', result.message);
+                        changesForm.reset();
+                        setTimeout(() => {
+                            hideModal(modals.requestChanges);
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        alert('Error: ' + result.error);
+                    }
+                } catch (error) {
+                    alert('Network error: ' + error.message);
+                }
+            });
+        }
+        
+        // Modal close buttons
+        document.getElementById('cancelTaskBtn').addEventListener('click', () => hideModal(modals.newTask));
+        document.getElementById('cancelTeamBtn').addEventListener('click', () => hideModal(modals.manageTeam));
+        document.getElementById('cancelMeetingBtn').addEventListener('click', () => hideModal(modals.scheduleMeeting));
+        document.getElementById('cancelChangesBtn').addEventListener('click', () => hideModal(modals.requestChanges));
+        document.getElementById('confirmCancelBtn').addEventListener('click', () => hideModal(modals.confirmation));
+        document.getElementById('closeSuccessBtn').addEventListener('click', () => hideModal(modals.success));
+        
+        // Close modals when clicking outside
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    hideModal(this);
+                }
+            });
+        });
+        
+        // Quick actions
+        document.getElementById('createTaskBtn').addEventListener('click', () => showModal(modals.newTask));
+        document.getElementById('teamMeetingBtn').addEventListener('click', () => showModal(modals.scheduleMeeting));
+        document.getElementById('newTaskBtn').addEventListener('click', () => showModal(modals.newTask));
+        document.getElementById('manageTeamBtn').addEventListener('click', async () => { await loadAvailableEmployees(); showModal(modals.manageTeam); });
+        document.getElementById('manageTeamBtn2').addEventListener('click', async () => { await loadAvailableEmployees(); showModal(modals.manageTeam); });
+        document.getElementById('scheduleMeetingBtn').addEventListener('click', () => showModal(modals.scheduleMeeting));
+        document.getElementById('viewReportsBtn').addEventListener('click', () => window.location.href = "{% url 'pm_reports' %}");
+    });
+</script>
+{% endblock %}

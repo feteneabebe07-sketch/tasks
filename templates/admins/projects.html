@@ -1,0 +1,1068 @@
+<!-- templates/projects.html -->
+{% extends 'admins/base.html' %}
+{% load static %}
+
+{% block title %}ProjectFlow - Projects{% endblock %}
+
+{% block header_title %}Projects{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4">
+    <!-- Page Header with Create Button -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <div>
+            <h1 class="text-xl md:text-2xl font-bold text-ink-black">Project Management</h1>
+            <p class="text-gray-600 text-sm md:text-base">Manage and track all company projects</p>
+        </div>
+        <button onclick="openModal('createProjectModal')" class="bg-dark-teal text-white px-4 py-2 rounded-lg hover:bg-dark-cyan transition flex items-center w-full sm:w-auto justify-center">
+            <i class="fas fa-plus mr-2"></i>
+            Create Project
+        </button>
+    </div>
+    
+    <!-- Project Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+        <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 card-hover transition">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-xs md:text-sm">Total Projects</p>
+                    <h3 class="text-xl md:text-2xl font-bold text-ink-black mt-1">{{ projects|length }}</h3>
+                </div>
+                <div class="p-2 md:p-3 bg-dark-teal bg-opacity-10 rounded-lg">
+                    <i class="fas fa-project-diagram text-dark-teal text-lg md:text-xl"></i>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-3 md:mt-4">
+                {% with new_projects=0 %}
+                {% for project in projects %}
+                    {% if project.created_at and project.created_at|timesince|slice:":2"|add:"0" <= 30 %}
+                        {% with new_projects=new_projects|add:1 %}{% endwith %}
+                    {% endif %}
+                {% endfor %}
+                <span class="text-dark-cyan font-medium">+{{ new_projects }} this month</span>
+                {% endwith %}
+            </p>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 card-hover transition">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-xs md:text-sm">Active Projects</p>
+                    <h3 class="text-xl md:text-2xl font-bold text-ink-black mt-1">
+                        {{active_projects_count}}
+                    </h3>
+                </div>
+                <div class="p-2 md:p-3 bg-dark-cyan bg-opacity-10 rounded-lg">
+                    <i class="fas fa-play-circle text-dark-cyan text-lg md:text-xl"></i>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-3 md:mt-4">
+                {% with total=projects|length active=0 %}
+                {% for project in projects %}
+                    {% if project.status == 'active' %}
+                        {% with active=active|add:1 %}{% endwith %}
+                    {% endif %}
+                {% endfor %}
+                {% if total > 0 %}
+                    <span class="text-dark-cyan font-medium">{{ active|floatformat:0 }}% active rate</span>
+                {% endif %}
+                {% endwith %}
+            </p>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 card-hover transition">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-xs md:text-sm">Completed</p>
+                    <h3 class="text-xl md:text-2xl font-bold text-ink-black mt-1">
+                        {{completed_projects_count}}
+                    </h3>
+                </div>
+                <div class="p-2 md:p-3 bg-golden-orange bg-opacity-10 rounded-lg">
+                    <i class="fas fa-check-circle text-golden-orange text-lg md:text-xl"></i>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-3 md:mt-4">
+                {% with completed_this_month=0 %}
+                {% for project in projects %}
+                    {% if project.status == 'completed' and project.updated_at and project.updated_at|timesince|slice:":2"|add:"0" <= 30 %}
+                        {% with completed_this_month=completed_this_month|add:1 %}{% endwith %}
+                    {% endif %}
+                {% endfor %}
+                <span class="text-dark-cyan font-medium">{{ completed_this_month }} this month</span>
+                {% endwith %}
+            </p>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 card-hover transition">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-xs md:text-sm">Delayed</p>
+                    <h3 class="text-xl md:text-2xl font-bold text-ink-black mt-1">
+                        {% with delayed_count=0 %}
+                        {% for project in projects %}
+                            {% if project.due_date and project.due_date < now.date and project.status == 'active' %}
+                                {% with delayed_count=delayed_count|add:1 %}{% endwith %}
+                            {% endif %}
+                        {% endfor %}
+                        {{ delayed_count }}
+                        {% endwith %}
+                    </h3>
+                </div>
+                <div class="p-2 md:p-3 bg-rusty-spice bg-opacity-10 rounded-lg">
+                    <i class="fas fa-exclamation-triangle text-rusty-spice text-lg md:text-xl"></i>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-3 md:mt-4">
+                <span class="text-oxidized-iron font-medium">Needs attention</span>
+            </p>
+        </div>
+    </div>
+    
+    <!-- Projects Table -->
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="px-4 md:px-6 py-4 border-b border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <h3 class="text-base md:text-lg font-semibold text-ink-black">All Projects</h3>
+            <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+                <div class="relative w-full sm:w-auto">
+                    <input type="text" id="projectSearch" placeholder="Search projects..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent w-full">
+                    <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                </div>
+                <button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center justify-center w-full sm:w-auto">
+                    <i class="fas fa-filter mr-2 text-gray-600"></i>
+                    Filter
+                </button>
+                <button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center justify-center w-full sm:w-auto">
+                    <i class="fas fa-download mr-2 text-gray-600"></i>
+                    Export
+                </button>
+            </div>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[600px]" id="projectsTable">
+                <thead>
+                    <tr class="text-left text-gray-500 text-xs md:text-sm border-b">
+                        <th class="pb-3 font-medium pl-4 md:pl-6">Project</th>
+                        <th class="pb-3 font-medium">Department</th>
+                        <th class="pb-3 font-medium">Project Manager</th>
+                        <th class="pb-3 font-medium">Progress</th>
+                        <th class="pb-3 font-medium">Due Date</th>
+                        <th class="pb-3 font-medium">Status</th>
+                        <th class="pb-3 font-medium pr-4 md:pr-6 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y" id="projectsTableBody">
+                    {% for project in projects %}
+                    <tr class="hover:bg-gray-50 transition" data-project-id="{{ project.id }}">
+                        <td class="py-4 pl-4 md:pl-6">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg 
+                                    {% if project.project_type == 'web' %}bg-dark-teal
+                                    {% elif project.project_type == 'mobile' %}bg-dark-cyan
+                                    {% elif project.project_type == 'research' %}bg-golden-orange
+                                    {% elif project.project_type == 'internal' %}bg-rusty-spice
+                                    {% else %}bg-oxidized-iron{% endif %}
+                                    bg-opacity-10 flex items-center justify-center mr-3">
+                                    <i class="fas 
+                                        {% if project.project_type == 'web' %}fa-shopping-cart text-dark-teal
+                                        {% elif project.project_type == 'mobile' %}fa-mobile-alt text-dark-cyan
+                                        {% elif project.project_type == 'research' %}fa-brain text-golden-orange
+                                        {% elif project.project_type == 'internal' %}fa-cogs text-rusty-spice
+                                        {% else %}fa-paint-brush text-oxidized-iron{% endif %}
+                                        text-sm md:text-base"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium text-sm md:text-base">{{ project.name|truncatechars:30 }}</h4>
+                                    <p class="text-xs text-gray-500 truncate max-w-[150px] md:max-w-xs">{{ project.description|default:"No description"|truncatechars:40 }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4">
+                            {% if project.department %}
+                            <span class="px-2 py-1 bg-dark-teal bg-opacity-10 text-dark-teal text-xs rounded-full">{{ project.department.name|truncatechars:15 }}</span>
+                            {% else %}
+                            <span class="text-sm text-gray-500">Not assigned</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-4">
+                            {% if project.project_manager %}
+                            <div class="flex items-center">
+                                <div class="w-6 h-6 md:w-8 md:h-8 rounded-full bg-dark-cyan flex items-center justify-center text-white font-bold text-xs mr-2">
+                                    {{ project.project_manager.first_name|first|upper }}{{ project.project_manager.last_name|first|upper }}
+                                </div>
+                                <span class="text-sm md:text-base">{{ project.project_manager.get_full_name|default:project.project_manager.username|truncatechars:15 }}</span>
+                            </div>
+                            {% else %}
+                            <span class="text-sm text-gray-500">Not assigned</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-4">
+                            <div class="flex items-center">
+                                <div class="w-12 md:w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                    <div class="h-2 rounded-full progress-bar" 
+                                         style="width: {{ project.progress|default:0 }}%;
+                                                background-color: 
+                                                {% if project.progress >= 80 %}#005f73
+                                                {% elif project.progress >= 50 %}#0a9396
+                                                {% elif project.progress >= 30 %}#ee9b00
+                                                {% else %}#bb3e03{% endif %};">
+                                    </div>
+                                </div>
+                                <span class="text-xs text-gray-500">{{ project.progress|default:0 }}%</span>
+                            </div>
+                        </td>
+                        <td class="py-4">
+                            <span class="text-gray-700 text-sm md:text-base">
+                                {% if project.due_date %}
+                                    {{ project.due_date|date:"d M Y" }}
+                                    {% if project.due_date < now.date and project.status == 'active' %}
+                                        <span class="text-xs text-red-500 ml-1">(overdue)</span>
+                                    {% endif %}
+                                {% else %}
+                                    Not set
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td class="py-4">
+                            {% if project.status == 'active' %}
+                                <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Active</span>
+                            {% elif project.status == 'completed' %}
+                                <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">Completed</span>
+                            {% elif project.status == 'on_hold' %}
+                                <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">On Hold</span>
+                            {% elif project.status == 'cancelled' %}
+                                <span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">Cancelled</span>
+                            {% elif project.status == 'draft' %}
+                                <span class="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">Draft</span>
+                            {% else %}
+                                <span class="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">{{ project.status|title }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-4 pr-4 md:pr-6">
+                            <div class="flex justify-end space-x-2">
+                                <button onclick="viewProject({{ project.id }})" class="text-dark-teal hover:text-dark-cyan transition">
+                                    <i class="fas fa-eye text-sm md:text-base"></i>
+                                </button>
+                                <button onclick="editProject({{ project.id }})" class="text-golden-orange hover:text-burnt-caramel transition">
+                                    <i class="fas fa-edit text-sm md:text-base"></i>
+                                </button>
+                                <button onclick="assignPM({{ project.id }})" class="text-dark-cyan hover:text-dark-teal transition">
+                                    <i class="fas fa-user-tie text-sm md:text-base"></i>
+                                </button>
+                                
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="py-8 text-center text-gray-500">
+                            <i class="fas fa-project-diagram text-4xl mb-2"></i>
+                            <p>No projects found. Create your first project!</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        <div class="px-4 md:px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <p class="text-xs md:text-sm text-gray-500">Showing {{ projects|length }} projects</p>
+            <!-- Pagination controls can be added here -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_modals %}
+<!-- Create Project Modal -->
+<div id="createProjectModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden modal z-50">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-2xl shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-base md:text-lg font-medium text-ink-black">Create Project</h3>
+                <button onclick="closeModal('createProjectModal')" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="createProjectForm" class="mt-4 space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Project Title *</label>
+                    <input type="text" id="project_title" name="title" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" placeholder="Enter project title">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+                    <textarea id="project_description" name="description" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" rows="3" placeholder="Enter project description"></textarea>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Department *</label>
+                        <select id="project_department" name="department" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base">
+                            <option value="">Select department</option>
+                            {% for department in departments %}
+                            <option value="{{ department.id }}">{{ department.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Project Type *</label>
+                        <select id="project_type" name="project_type" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base">
+                            <option value="">Select type</option>
+                            <option value="web">Web App</option>
+                            <option value="mobile">Mobile</option>
+                            <option value="research">Research</option>
+                            <option value="internal">Internal</option>
+                            <option value="client">Client</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
+                        <input type="date" id="project_start_date" name="start_date" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">End Date *</label>
+                        <input type="date" id="project_end_date" name="end_date" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base">
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Budget</label>
+                        <input type="number" id="project_budget" name="budget" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" placeholder="Enter budget">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Project Manager</label>
+                        <select id="project_manager" name="project_manager" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base">
+                            <option value="">Select project manager</option>
+                            {% for manager in project_managers %}
+                            <option value="{{ manager.id }}">{{ manager.get_full_name|default:manager.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-4 border-t">
+                    <button type="button" onclick="closeModal('createProjectModal')" class="px-3 md:px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition text-sm md:text-base">Cancel</button>
+                    <button type="button" onclick="createProject()" class="px-3 md:px-4 py-2 bg-dark-teal text-white rounded-md hover:bg-dark-cyan transition text-sm md:text-base">Create Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- View Project Modal -->
+<div id="viewProjectModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden modal z-50">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-3xl shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-base md:text-lg font-medium text-ink-black" id="viewProjectName">Project Details</h3>
+                <button onclick="closeModal('viewProjectModal')" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="mt-4 space-y-6">
+                <div class="flex items-start">
+                    <div class="w-12 h-12 md:w-16 md:h-16 rounded-lg bg-dark-teal bg-opacity-10 flex items-center justify-center mr-4" id="viewProjectIcon">
+                        <i class="fas fa-project-diagram text-dark-teal text-lg md:text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-base md:text-lg" id="viewProjectTitle"></h4>
+                        <p class="text-gray-600 text-sm md:text-base" id="viewProjectDescription"></p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-500">Project Manager</p>
+                        <div class="flex items-center mt-1" id="viewProjectManager"></div>
+                    </div>
+                    
+                    <div>
+                        <p class="text-sm text-gray-500">Department</p>
+                        <p class="mt-1" id="viewProjectDepartment"></p>
+                    </div>
+                    
+                    <div>
+                        <p class="text-sm text-gray-500">Start Date</p>
+                        <p class="mt-1 font-medium text-sm md:text-base" id="viewProjectStartDate"></p>
+                    </div>
+                    
+                    <div>
+                        <p class="text-sm text-gray-500">Due Date</p>
+                        <p class="mt-1 font-medium text-sm md:text-base" id="viewProjectDueDate"></p>
+                    </div>
+                    
+                    <div>
+                        <p class="text-sm text-gray-500">Budget</p>
+                        <p class="mt-1 font-medium text-sm md:text-base" id="viewProjectBudget"></p>
+                    </div>
+                    
+                    <div>
+                        <p class="text-sm text-gray-500">Status</p>
+                        <p class="mt-1" id="viewProjectStatus"></p>
+                    </div>
+                </div>
+                
+                <div>
+                    <p class="text-sm text-gray-500 mb-2">Progress</p>
+                    <div class="w-full bg-gray-200 rounded-full h-2 md:h-3">
+                        <div class="h-2 md:h-3 rounded-full progress-bar" id="viewProjectProgressBar"></div>
+                    </div>
+                    <div class="flex justify-between mt-1">
+                        <span class="text-xs text-gray-500" id="viewProjectProgressText"></span>
+                        <span class="text-xs text-gray-500" id="viewProjectDaysRemaining"></span>
+                    </div>
+                </div>
+                
+                <div>
+                    <p class="text-sm text-gray-500 mb-2">Team Members</p>
+                    <div class="flex -space-x-2" id="viewProjectTeam"></div>
+                </div>
+                
+                <div>
+                    <p class="text-sm text-gray-500 mb-2">Recent Activity</p>
+                    <div class="space-y-2" id="viewProjectActivity"></div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-4 border-t">
+                    <button type="button" onclick="closeModal('viewProjectModal')" class="px-3 md:px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition text-sm md:text-base">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Project Modal -->
+<div id="editProjectModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden modal z-50">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-2xl shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-base md:text-lg font-medium text-ink-black">Edit Project</h3>
+                <button onclick="closeModal('editProjectModal')" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="editProjectForm" class="mt-4 space-y-4">
+                {% csrf_token %}
+                <input type="hidden" id="edit_project_id" name="id">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Project Title *</label>
+                    <input type="text" id="edit_project_title" name="title" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" placeholder="Enter project title">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+                    <textarea id="edit_project_description" name="description" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" rows="3" placeholder="Enter project description"></textarea>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Department *</label>
+                        <select id="edit_project_department" name="department" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base">
+                            <option value="">Select department</option>
+                            {% for department in departments %}
+                            <option value="{{ department.id }}">{{ department.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Project Type *</label>
+                        <select id="edit_project_type" name="project_type" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base">
+                            <option value="">Select type</option>
+                            <option value="web">Web App</option>
+                            <option value="mobile">Mobile</option>
+                            <option value="research">Research</option>
+                            <option value="internal">Internal</option>
+                            <option value="client">Client</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
+                        <input type="date" id="edit_project_start_date" name="start_date" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">End Date *</label>
+                        <input type="date" id="edit_project_end_date" name="end_date" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base">
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Budget</label>
+                        <input type="number" id="edit_project_budget" name="budget" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" placeholder="Enter budget">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Progress</label>
+                        <input type="number" id="edit_project_progress" name="progress" min="0" max="100" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" placeholder="0-100">
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select id="edit_project_status" name="status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base">
+                            <option value="draft">Draft</option>
+                            <option value="active">Active</option>
+                            <option value="on_hold">On Hold</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Project Manager</label>
+                        <select id="edit_project_manager" name="project_manager" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base">
+                            <option value="">Select project manager</option>
+                            {% for manager in project_managers %}
+                            <option value="{{ manager.id }}">{{ manager.get_full_name|default:manager.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-4 border-t">
+                    <button type="button" onclick="closeModal('editProjectModal')" class="px-3 md:px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition text-sm md:text-base">Cancel</button>
+                    <button type="button" onclick="updateProject()" class="px-3 md:px-4 py-2 bg-dark-teal text-white rounded-md hover:bg-dark-cyan transition text-sm md:text-base">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Project Manager Modal -->
+<div id="assignPMModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden modal z-50">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-md shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-base md:text-lg font-medium text-ink-black">Assign Project Manager</h3>
+                <button onclick="closeModal('assignPMModal')" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="assignPMForm" class="mt-4 space-y-4">
+                {% csrf_token %}
+                <input type="hidden" id="assign_project_id" name="project_id">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Project</label>
+                    <select id="assign_project_select" name="project_id" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base" disabled>
+                        <!-- Will be populated by JavaScript -->
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Project Manager *</label>
+                    <select id="assign_pm_select" name="pm_id" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent text-sm md:text-base">
+                        <option value="">Select project manager</option>
+                        {% for manager in project_managers %}
+                        <option value="{{ manager.id }}">{{ manager.get_full_name|default:manager.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-4 border-t">
+                    <button type="button" onclick="closeModal('assignPMModal')" class="px-3 md:px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition text-sm md:text-base">Cancel</button>
+                    <button type="button" onclick="assignProjectManager()" class="px-3 md:px-4 py-2 bg-dark-teal text-white rounded-md hover:bg-dark-cyan transition text-sm md:text-base">Assign PM</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Admin API endpoints (use Django reverse URLs to avoid hard-coded paths)
+    const ADMIN_API_CREATE_PROJECT = "{% url 'admins:api_create_project' %}";
+    const ADMIN_API_GET_PROJECT = "{% url 'admins:api_get_project' 0 %}"; // replace '0' with projectId
+    const ADMIN_API_UPDATE_PROJECT = "{% url 'admins:api_update_project' 0 %}"; // replace '0' with projectId
+    const ADMIN_API_ASSIGN_PM = "{% url 'admins:api_assign_pm' %}";
+
+    // Initialize project-specific functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add search functionality
+        const searchInput = document.getElementById('projectSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase();
+                const rows = document.querySelectorAll('#projectsTableBody tr');
+                
+                rows.forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    row.style.display = text.includes(searchTerm) ? '' : 'none';
+                });
+            });
+        }
+        
+        // Initialize date pickers
+        const startDateInput = document.getElementById('project_start_date');
+        const endDateInput = document.getElementById('project_end_date');
+        if (startDateInput && endDateInput) {
+            // Set today as default for start date
+            const today = new Date().toISOString().split('T')[0];
+            startDateInput.value = today;
+            startDateInput.min = today; // Can't start in the past
+            
+            // Set end date to 30 days from now as default
+            const futureDate = new Date();
+            futureDate.setDate(futureDate.getDate() + 30);
+            endDateInput.value = futureDate.toISOString().split('T')[0];
+            endDateInput.min = today;
+        }
+        
+        // Initialize edit date pickers
+        const editStartDate = document.getElementById('edit_project_start_date');
+        const editEndDate = document.getElementById('edit_project_end_date');
+        if (editStartDate && editEndDate) {
+            editEndDate.min = editStartDate.value;
+        }
+    });
+    
+    // Modal functions for this page
+    function openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+    
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+    }
+    
+    // Create project
+    async function createProject() {
+        const form = document.getElementById('createProjectForm');
+        if (!form) return;
+        
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        try {
+            const response = await fetch(ADMIN_API_CREATE_PROJECT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showNotification('Success', result.message || 'Project created successfully', 'success');
+                closeModal('createProjectModal');
+                if (result.reload) {
+                    setTimeout(() => location.reload(), 1500);
+                }
+            } else {
+                showNotification('Error', result.error || 'Failed to create project', 'error');
+            }
+        } catch (error) {
+            console.error('Error creating project:', error);
+            showNotification('Error', 'Network error occurred', 'error');
+        }
+    }
+    
+    // View project details
+    async function viewProject(projectId) {
+        try {
+            const response = await fetch(ADMIN_API_GET_PROJECT.replace('0', projectId));
+            if (!response.ok) throw new Error('Failed to fetch project details');
+            
+            const project = await response.json();
+            
+            // Populate modal with project data
+            document.getElementById('viewProjectName').textContent = project.name;
+            document.getElementById('viewProjectTitle').textContent = project.name;
+            document.getElementById('viewProjectDescription').textContent = project.description || 'No description';
+            
+            // Set project icon
+            const iconDiv = document.getElementById('viewProjectIcon');
+            const iconClass = getProjectTypeIcon(project.project_type);
+            iconDiv.innerHTML = `<i class="fas ${iconClass} text-dark-teal text-lg md:text-xl"></i>`;
+            
+            // Set project manager
+            const managerDiv = document.getElementById('viewProjectManager');
+            if (project.project_manager) {
+                managerDiv.innerHTML = `
+                    <div class="w-6 h-6 md:w-8 md:h-8 rounded-full bg-dark-cyan flex items-center justify-center text-white font-bold text-xs mr-2">
+                        ${project.project_manager.first_name ? project.project_manager.first_name[0] : ''}${project.project_manager.last_name ? project.project_manager.last_name[0] : ''}
+                    </div>
+                    <span class="font-medium text-sm md:text-base">${project.project_manager.full_name || project.project_manager.username}</span>
+                `;
+            } else {
+                managerDiv.innerHTML = '<span class="text-sm text-gray-500">Not assigned</span>';
+            }
+            
+            // Set department
+            const deptSpan = document.getElementById('viewProjectDepartment');
+            if (project.department) {
+                deptSpan.innerHTML = `<span class="px-2 py-1 bg-dark-teal bg-opacity-10 text-dark-teal text-xs rounded-full">${project.department.name}</span>`;
+            } else {
+                deptSpan.innerHTML = '<span class="text-sm text-gray-500">Not assigned</span>';
+            }
+            
+            // Set dates
+            document.getElementById('viewProjectStartDate').textContent = project.start_date || 'Not set';
+            document.getElementById('viewProjectDueDate').textContent = project.due_date || 'Not set';
+            
+            // Set budget
+            document.getElementById('viewProjectBudget').textContent = project.bget ? `$${parseInt(project.bget).toLocaleString()}` : 'Not set';
+            
+            // Set status
+            const statusDiv = document.getElementById('viewProjectStatus');
+            let statusClass = '';
+            let statusText = '';
+            switch(project.status) {
+                case 'active':
+                    statusClass = 'bg-green-100 text-green-800';
+                    statusText = 'Active';
+                    break;
+                case 'completed':
+                    statusClass = 'bg-blue-100 text-blue-800';
+                    statusText = 'Completed';
+                    break;
+                case 'on_hold':
+                    statusClass = 'bg-yellow-100 text-yellow-800';
+                    statusText = 'On Hold';
+                    break;
+                case 'cancelled':
+                    statusClass = 'bg-red-100 text-red-800';
+                    statusText = 'Cancelled';
+                    break;
+                default:
+                    statusClass = 'bg-gray-100 text-gray-800';
+                    statusText = project.status.charAt(0).toUpperCase() + project.status.slice(1);
+            }
+            statusDiv.innerHTML = `<span class="px-2 py-1 ${statusClass} text-xs rounded-full">${statusText}</span>`;
+            
+            // Set progress
+            const progress = project.progress || 0;
+            const progressBar = document.getElementById('viewProjectProgressBar');
+            progressBar.style.width = `${progress}%`;
+            progressBar.style.backgroundColor = progress >= 80 ? '#005f73' : progress >= 50 ? '#0a9396' : progress >= 30 ? '#ee9b00' : '#bb3e03';
+            
+            document.getElementById('viewProjectProgressText').textContent = `${progress}% complete`;
+            
+            // Calculate days remaining
+            if (project.due_date) {
+                const dueDate = new Date(project.due_date);
+                const today = new Date();
+                const diffTime = dueDate - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                document.getElementById('viewProjectDaysRemaining').textContent = `${diffDays} days remaining`;
+            } else {
+                document.getElementById('viewProjectDaysRemaining').textContent = 'No due date';
+            }
+            
+            // Set team members (you would fetch this from an API endpoint)
+            const teamDiv = document.getElementById('viewProjectTeam');
+            teamDiv.innerHTML = '';
+
+            // Helper to escape HTML
+            function escapeHtml(str) {
+                if (!str) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            // If the project payload already includes team members, use it.
+            if (project.team && Array.isArray(project.team) && project.team.length > 0) {
+                project.team.forEach(member => {
+                    const name = escapeHtml(member.full_name || member.get_full_name || member.username || `${member.first_name || ''} ${member.last_name || ''}`);
+                    const position = escapeHtml(member.position || member.job_position || member.role || '');
+                    const initials = (member.first_name || member.full_name || member.username || ' ')
+                        .split(' ')
+                        .map(s => s.charAt(0))
+                        .filter(Boolean)
+                        .slice(0,2)
+                        .join('')
+                        .toUpperCase();
+
+                    const item = document.createElement('div');
+                    item.className = 'flex items-center mr-3';
+                    item.innerHTML = `
+                        <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-dark-cyan flex items-center justify-center text-white font-bold text-xs mr-2">
+                            ${escapeHtml(initials)}
+                        </div>
+                        <div class="text-sm">
+                            <div class="font-medium">${name}</div>
+                            ${position ? `<div class="text-xs text-gray-500">${position}</div>` : ''}
+                        </div>
+                    `;
+                    teamDiv.appendChild(item);
+                });
+            } else {
+                // Otherwise, try fetching team members from the admin API under /admins/api/projects/<id>/team/
+                try {
+                    const teamResp = await fetch(ADMIN_API_PREFIX + `projects/${project.id}/team/`);
+                    if (teamResp.ok) {
+                        const teamData = await teamResp.json();
+                        if (Array.isArray(teamData) && teamData.length > 0) {
+                            teamData.forEach(member => {
+                                const name = escapeHtml(member.full_name || member.get_full_name || member.username || `${member.first_name || ''} ${member.last_name || ''}`);
+                                const position = escapeHtml(member.position || member.job_position || member.role || '');
+                                const initials = (member.first_name || member.full_name || member.username || ' ')
+                                    .split(' ')
+                                    .map(s => s.charAt(0))
+                                    .filter(Boolean)
+                                    .slice(0,2)
+                                    .join('')
+                                    .toUpperCase();
+
+                                const item = document.createElement('div');
+                                item.className = 'flex items-center mr-3';
+                                item.innerHTML = `
+                                    <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-dark-cyan flex items-center justify-center text-white font-bold text-xs mr-2">
+                                        ${escapeHtml(initials)}
+                                    </div>
+                                    <div class="text-sm">
+                                        <div class="font-medium">${name}</div>
+                                        ${position ? `<div class="text-xs text-gray-500">${position}</div>` : ''}
+                                    </div>
+                                `;
+                                teamDiv.appendChild(item);
+                            });
+                        } else {
+                            teamDiv.innerHTML = '<p class="text-sm text-gray-500">No team data available</p>';
+                        }
+                    } else {
+                        teamDiv.innerHTML = '<p class="text-sm text-gray-500">No team data available</p>';
+                    }
+                } catch (err) {
+                    console.error('Failed to load project team:', err);
+                    teamDiv.innerHTML = '<p class="text-sm text-gray-500">No team data available</p>';
+                }
+            }
+            
+            // Set recent activity
+            const activityDiv = document.getElementById('viewProjectActivity');
+            activityDiv.innerHTML = `
+                <div class="flex items-center text-sm">
+                    <div class="w-2 h-2 rounded-full bg-dark-teal mr-2"></div>
+                    <span>Project created</span>
+                    <span class="text-gray-500 ml-auto text-xs whitespace-nowrap">${project.created_at ? new Date(project.created_at).toLocaleDateString() : 'Unknown'}</span>
+                </div>
+            `;
+            
+            openModal('viewProjectModal');
+        } catch (error) {
+            console.error('Error loading project details:', error);
+            showNotification('Error', 'Failed to load project details', 'error');
+        }
+    }
+    
+    // Load project for editing
+    async function editProject(projectId) {
+        try {
+            const response = await fetch(ADMIN_API_GET_PROJECT.replace('0', projectId));
+            if (!response.ok) throw new Error('Failed to fetch project details');
+            
+            const project = await response.json();
+            
+            // Populate edit form
+            document.getElementById('edit_project_id').value = project.id;
+            document.getElementById('edit_project_title').value = project.name;
+            document.getElementById('edit_project_description').value = project.description || '';
+            document.getElementById('edit_project_department').value = project.department_id || '';
+            document.getElementById('edit_project_type').value = project.project_type || 'web';
+            document.getElementById('edit_project_start_date').value = project.start_date || '';
+            document.getElementById('edit_project_end_date').value = project.due_date || '';
+            document.getElementById('edit_project_budget').value = project.bget || '';
+            document.getElementById('edit_project_progress').value = project.progress || 0;
+            document.getElementById('edit_project_status').value = project.status || 'draft';
+            document.getElementById('edit_project_manager').value = project.project_manager_id || '';
+            
+            // Set min date for end date based on start date
+            const startDateInput = document.getElementById('edit_project_start_date');
+            const endDateInput = document.getElementById('edit_project_end_date');
+            if (startDateInput.value) {
+                endDateInput.min = startDateInput.value;
+            }
+            
+            openModal('editProjectModal');
+        } catch (error) {
+            console.error('Error loading project for edit:', error);
+            showNotification('Error', 'Failed to load project details', 'error');
+        }
+    }
+    
+    // Update project
+    async function updateProject() {
+        const form = document.getElementById('editProjectForm');
+        if (!form) return;
+        
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        const projectId = data.id;
+        
+        try {
+            const response = await fetch(ADMIN_API_UPDATE_PROJECT.replace('0', projectId), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showNotification('Success', result.message || 'Project updated successfully', 'success');
+                closeModal('editProjectModal');
+                if (result.reload) {
+                    setTimeout(() => location.reload(), 1500);
+                }
+            } else {
+                showNotification('Error', result.error || 'Failed to update project', 'error');
+            }
+        } catch (error) {
+            console.error('Error updating project:', error);
+            showNotification('Error', 'Network error occurred', 'error');
+        }
+    }
+    
+    // Assign project manager
+    function assignPM(projectId) {
+        // Find the project in the table to get its name
+        const projectRow = document.querySelector(`tr[data-project-id="${projectId}"]`);
+        const projectName = projectRow ? projectRow.querySelector('h4').textContent : `Project ${projectId}`;
+        
+        // Set project ID and name
+        document.getElementById('assign_project_id').value = projectId;
+        const projectSelect = document.getElementById('assign_project_select');
+        projectSelect.innerHTML = `<option value="${projectId}" selected>${projectName}</option>`;
+        
+        // Clear PM selection
+        document.getElementById('assign_pm_select').value = '';
+        
+        openModal('assignPMModal');
+    }
+    
+    // Assign project manager via API
+    async function assignProjectManager() {
+        const form = document.getElementById('assignPMForm');
+        if (!form) return;
+        
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        try {
+            const response = await fetch(ADMIN_API_ASSIGN_PM, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showNotification('Success', result.message || 'Project manager assigned successfully', 'success');
+                closeModal('assignPMModal');
+                if (result.reload) {
+                    setTimeout(() => location.reload(), 1500);
+                }
+            } else {
+                showNotification('Error', result.error || 'Failed to assign project manager', 'error');
+            }
+        } catch (error) {
+            console.error('Error assigning project manager:', error);
+            showNotification('Error', 'Network error occurred', 'error');
+        }
+    }
+    
+   
+    
+    // Helper functions
+    function getProjectTypeIcon(projectType) {
+        switch(projectType) {
+            case 'web': return 'fa-shopping-cart';
+            case 'mobile': return 'fa-mobile-alt';
+            case 'research': return 'fa-brain';
+            case 'internal': return 'fa-cogs';
+            case 'client': return 'fa-paint-brush';
+            default: return 'fa-project-diagram';
+        }
+    }
+    
+    // Notification helper
+    function showNotification(title, message, type = 'info') {
+        // Create a simple notification
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+            type === 'success' ? 'bg-green-500 text-white' :
+            type === 'error' ? 'bg-red-500 text-white' :
+            'bg-blue-500 text-white'
+        }`;
+        notification.innerHTML = `
+            <div class="flex items-center">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} mr-2"></i>
+                <div>
+                    <strong class="font-bold">${title}</strong>
+                    <p class="text-sm">${message}</p>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        document.body.appendChild(notification);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+    
+    // Animate progress bars when they become visible
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const progressBar = entry.target;
+                progressBar.style.transition = 'width 1s ease-in-out';
+                progressBar.style.width = progressBar.style.width;
+            }
+        });
+    });
+    
+    document.querySelectorAll('.progress-bar').forEach(bar => {
+        observer.observe(bar);
+    });
+</script>
+{% endblock %}

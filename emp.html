@@ -1,0 +1,1820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProjectFlow - Developer Tasks</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'ink-black': '#001219',
+                        'dark-teal': '#005f73',
+                        'dark-cyan': '#0a9396',
+                        'pearl-aqua': '#94d2bd',
+                        'vanilla-custard': '#e9d8a6',
+                        'golden-orange': '#ee9b00',
+                        'burnt-caramel': '#ca6702',
+                        'rusty-spice': '#bb3e03',
+                        'oxidized-iron': '#ae2012',
+                        'brown-red': '#9b2226',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .sidebar {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        .active-tab {
+            background-color: rgba(148, 210, 189, 0.2);
+            border-left: 4px solid #94d2bd;
+        }
+        .task-status-todo { border-left: 4px solid #ee9b00; }
+        .task-status-progress { border-left: 4px solid #0a9396; }
+        .task-status-review { border-left: 4px solid #bb3e03; }
+        .task-status-done { border-left: 4px solid #94d2bd; }
+        .task-status-blocked { border-left: 4px solid #ae2012; }
+        .priority-high { background-color: rgba(187, 62, 3, 0.1); color: #bb3e03; }
+        .priority-medium { background-color: rgba(238, 155, 0, 0.1); color: #ca6702; }
+        .priority-low { background-color: rgba(148, 210, 189, 0.1); color: #0a9396; }
+        .priority-critical { background-color: rgba(155, 34, 38, 0.1); color: #9b2226; }
+        .timer-active { background-color: rgba(14, 165, 233, 0.1); color: #0ea5e9; }
+        .progress-bar { 
+            height: 8px; 
+            border-radius: 4px; 
+            background-color: #e5e7eb; 
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        .task-type-bug { background-color: rgba(174, 32, 18, 0.1); color: #ae2012; }
+        .task-type-feature { background-color: rgba(10, 147, 150, 0.1); color: #0a9396; }
+        .task-type-improvement { background-color: rgba(148, 210, 189, 0.1); color: #005f73; }
+        .task-type-research { background-color: rgba(233, 216, 166, 0.1); color: #ca6702; }
+        .task-type-documentation { background-color: rgba(238, 155, 0, 0.1); color: #bb3e03; }
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .modal-enter {
+            animation: modalEnter 0.3s ease-out;
+        }
+        @keyframes modalEnter {
+            from {
+                opacity: 0;
+                transform: translateY(-20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        .comment-bubble {
+            position: relative;
+        }
+        .comment-bubble:after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 20px;
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-top: 10px solid #f3f4f6;
+        }
+        .workflow-step {
+            position: relative;
+            padding-left: 30px;
+        }
+        .workflow-step:before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #e5e7eb;
+        }
+        .workflow-step.active:before {
+            background-color: #0a9396;
+            border: 3px solid rgba(10, 147, 150, 0.2);
+        }
+        .workflow-step.completed:before {
+            background-color: #94d2bd;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <div class="sidebar w-64 bg-ink-black text-white flex flex-col">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-pearl-aqua">ProjectFlow</h1>
+                <p class="text-sm text-gray-400 mt-1">Developer Dashboard</p>
+            </div>
+            
+            <nav class="flex-1 px-4 py-6">
+                <ul class="space-y-2">
+                    <li>
+                        <a href="dev.html" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-teal hover:text-white transition">
+                            <i class="fas fa-tachometer-alt mr-3"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="my-tasks.html" class="flex items-center px-4 py-3 rounded-lg active-tab text-pearl-aqua">
+                            <i class="fas fa-tasks mr-3"></i>
+                            <span>My Tasks</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="time-tracking.html" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-teal hover:text-white transition">
+                            <i class="fas fa-clock mr-3"></i>
+                            <span>Time Tracking</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="calendar.html" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-teal hover:text-white transition">
+                            <i class="fas fa-calendar-alt mr-3"></i>
+                            <span>Calendar</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="messages.html" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-teal hover:text-white transition">
+                            <i class="fas fa-comments mr-3"></i>
+                            <span>Messages</span>
+                            <span class="ml-auto bg-golden-orange text-white text-xs px-2 py-1 rounded-full">3</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="standup.html" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-teal hover:text-white transition">
+                            <i class="fas fa-calendar-check mr-3"></i>
+                            <span>Daily Standup</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="workload.html" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-teal hover:text-white transition">
+                            <i class="fas fa-chart-bar mr-3"></i>
+                            <span>Workload</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="p-4 border-t border-dark-teal">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full bg-dark-cyan flex items-center justify-center text-white font-bold">
+                        AC
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium">Alex Chen</p>
+                        <p class="text-xs text-gray-400">Frontend Developer</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Header -->
+            <header class="bg-white shadow-sm py-4 px-6 flex justify-between items-center">
+                <div class="flex items-center">
+                    <button id="sidebarToggle" class="text-dark-teal mr-4">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    <h2 class="text-xl font-semibold text-ink-black">My Tasks</h2>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <button class="text-dark-teal">
+                            <i class="fas fa-bell text-xl"></i>
+                        </button>
+                        <span class="absolute -top-1 -right-1 bg-rusty-spice text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">3</span>
+                    </div>
+                    <div id="timerDisplay" class="px-4 py-2 bg-dark-teal text-white rounded-lg flex items-center">
+                        <i class="fas fa-clock mr-2"></i>
+                        <span id="timerValue">00:00:00</span>
+                        <button id="timerToggle" class="ml-2">
+                            <i class="fas fa-play"></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- My Tasks Content -->
+            <main class="flex-1 overflow-y-auto p-6 bg-gray-50">
+                <!-- Task Filters & Summary -->
+                <div class="mb-8">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                        <div>
+                            <h3 class="text-2xl font-bold text-ink-black">My Tasks</h3>
+                            <p class="text-gray-600">Tasks assigned to you. Submit completed work for PM approval.</p>
+                        </div>
+                        
+                        <div class="flex space-x-3 mt-4 md:mt-0">
+                            <button class="px-4 py-2 border border-dark-teal text-dark-teal rounded-lg flex items-center">
+                                <i class="fas fa-filter mr-2"></i>
+                                Filter Tasks
+                            </button>
+                            <button class="px-4 py-2 border border-dark-teal text-dark-teal rounded-lg flex items-center">
+                                <i class="fas fa-sort mr-2"></i>
+                                Sort By
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Task Summary Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div class="bg-white rounded-xl shadow-sm p-5 card-hover transition">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-500 text-sm">Assigned Tasks</p>
+                                    <h3 class="text-2xl font-bold text-ink-black mt-1">8</h3>
+                                </div>
+                                <div class="p-3 bg-dark-teal bg-opacity-10 rounded-lg">
+                                    <i class="fas fa-tasks text-dark-teal text-xl"></i>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-3">Total assigned by PM</p>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow-sm p-5 card-hover transition">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-500 text-sm">Ready for Review</p>
+                                    <h3 class="text-2xl font-bold text-ink-black mt-1">2</h3>
+                                </div>
+                                <div class="p-3 bg-golden-orange bg-opacity-10 rounded-lg">
+                                    <i class="fas fa-eye text-golden-orange text-xl"></i>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-3">Awaiting PM approval</p>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow-sm p-5 card-hover transition">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-500 text-sm">This Week's Deadline</p>
+                                    <h3 class="text-2xl font-bold text-ink-black mt-1">4</h3>
+                                </div>
+                                <div class="p-3 bg-dark-cyan bg-opacity-10 rounded-lg">
+                                    <i class="fas fa-calendar-day text-dark-cyan text-xl"></i>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-3">Due within 7 days</p>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow-sm p-5 card-hover transition">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-500 text-sm">Time Logged Today</p>
+                                    <h3 class="text-2xl font-bold text-ink-black mt-1">3.5h</h3>
+                                </div>
+                                <div class="p-3 bg-pearl-aqua bg-opacity-10 rounded-lg">
+                                    <i class="fas fa-hourglass-half text-pearl-aqua text-xl"></i>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-3">Daily target: 8h</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Workflow Status Tabs -->
+                    <div class="flex flex-wrap mb-6">
+                        <button class="tab-btn px-4 py-2 bg-dark-teal text-white rounded-l-lg" data-status="all">
+                            All Tasks
+                        </button>
+                        <button class="tab-btn px-4 py-2 border border-dark-teal border-l-0 text-dark-teal" data-status="todo">
+                            To Do
+                        </button>
+                        <button class="tab-btn px-4 py-2 border border-dark-teal border-l-0 text-dark-teal" data-status="in_progress">
+                            In Progress
+                        </button>
+                        <button class="tab-btn px-4 py-2 border border-dark-teal border-l-0 text-dark-teal" data-status="review">
+                            In Review
+                        </button>
+                        <button class="tab-btn px-4 py-2 border border-dark-teal border-l-0 rounded-r-lg text-dark-teal" data-status="done">
+                            Approved
+                        </button>
+                        <div class="ml-4 flex-1 md:flex-none">
+                            <div class="relative">
+                                <input type="text" placeholder="Search tasks..." class="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg">
+                                <i class="fas fa-search absolute right-3 top-3 text-gray-400"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tasks List -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Task List Column -->
+                    <div class="lg:col-span-2">
+                        <!-- Today's Priority Tasks -->
+                        <div class="mb-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-semibold text-ink-black">Today's Priority</h3>
+                                <button class="text-dark-teal text-sm font-medium">View All</button>
+                            </div>
+                            
+                            <div class="space-y-4">
+                                <!-- Task Item 1 (In Progress) -->
+                                <div class="task-card bg-white rounded-xl shadow-sm p-5 card-hover transition task-status-progress" 
+                                     data-task-id="1"
+                                     data-status="in_progress">
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex-1">
+                                            <div class="flex justify-between">
+                                                <h4 class="font-medium text-lg text-ink-black">Shopping Cart UI Improvements</h4>
+                                                <div class="flex items-center space-x-2">
+                                                    <span class="text-xs task-type-feature px-2 py-1 rounded-full">Feature</span>
+                                                    <span class="text-xs priority-high px-2 py-1 rounded-full">High</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="flex items-center mt-2">
+                                                <span class="text-sm text-gray-500 mr-3">
+                                                    <i class="fas fa-project-diagram mr-1"></i>
+                                                    E-commerce Platform
+                                                </span>
+                                                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                                                    <i class="fas fa-user-tie mr-1"></i>PM: Michael Chen
+                                                </span>
+                                            </div>
+                                            
+                                            <p class="text-gray-600 mt-3">Redesign cart items display and add quantity controls with better mobile responsiveness. Implement smooth animations for cart interactions.</p>
+                                            
+                                            <!-- Workflow Status -->
+                                            <div class="mt-4 flex items-center">
+                                                <div class="text-xs text-gray-500 mr-4">
+                                                    <i class="fas fa-exchange-alt mr-1"></i>
+                                                    Workflow:
+                                                </div>
+                                                <div class="flex space-x-1">
+                                                    <span class="text-xs px-2 py-1 bg-dark-cyan text-white rounded">In Progress</span>
+                                                    <span class="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded">Review</span>
+                                                    <span class="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded">PM Approval</span>
+                                                    <span class="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded">Done</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="flex items-center mt-4">
+                                                <div class="flex items-center text-xs text-gray-500 mr-4">
+                                                    <i class="fas fa-paperclip mr-1"></i>
+                                                    <span>3 attachments</span>
+                                                </div>
+                                                <div class="flex items-center text-xs text-gray-500 mr-4">
+                                                    <i class="fas fa-clock mr-1"></i>
+                                                    <span>Due: Today</span>
+                                                </div>
+                                                <div class="flex items-center text-xs text-gray-500">
+                                                    <i class="fas fa-hourglass-half mr-1"></i>
+                                                    <span>6h spent / 8h est.</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="flex items-center mt-4">
+                                                <div class="flex-1 mr-4">
+                                                    <div class="flex justify-between text-xs mb-1">
+                                                        <span class="text-gray-500">Progress</span>
+                                                        <span class="font-medium text-dark-cyan">75%</span>
+                                                    </div>
+                                                    <div class="progress-bar">
+                                                        <div class="progress-fill bg-dark-cyan" style="width: 75%"></div>
+                                                    </div>
+                                                </div>
+                                                <div class="flex space-x-2">
+                                                    <button class="px-3 py-2 bg-dark-cyan text-white text-sm rounded-lg flex items-center submit-review-btn">
+                                                        <i class="fas fa-paper-plane mr-2"></i>
+                                                        Submit for Review
+                                                    </button>
+                                                    <button class="px-3 py-2 border border-dark-teal text-dark-teal text-sm rounded-lg flex items-center view-task-btn">
+                                                        <i class="fas fa-eye mr-2"></i>
+                                                        Details
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- All Tasks -->
+                        <div>
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-semibold text-ink-black">All Assigned Tasks</h3>
+                                <div class="text-sm text-gray-500">
+                                    Showing <span id="taskCount">4</span> of 8 tasks
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-4" id="taskList">
+                                <!-- Task Item 2 (To Do) -->
+                                <div class="task-card bg-white rounded-xl shadow-sm p-5 card-hover transition task-status-todo"
+                                     data-task-id="2"
+                                     data-status="todo">
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex-1">
+                                            <div class="flex justify-between">
+                                                <h4 class="font-medium text-lg text-ink-black">Checkout Page - Payment Section</h4>
+                                                <div class="flex items-center space-x-2">
+                                                    <span class="text-xs task-type-feature px-2 py-1 rounded-full">Feature</span>
+                                                    <span class="text-xs priority-medium px-2 py-1 rounded-full">Medium</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="flex items-center mt-2">
+                                                <span class="text-sm text-gray-500 mr-3">
+                                                    <i class="fas fa-project-diagram mr-1"></i>
+                                                    E-commerce Platform
+                                                </span>
+                                                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                                                    <i class="fas fa-user-tie mr-1"></i>PM: Michael Chen
+                                                </span>
+                                            </div>
+                                            
+                                            <p class="text-gray-600 mt-3">Implement payment method selection UI with card form validation and integration with payment gateway API.</p>
+                                            
+                                            <!-- Workflow Status -->
+                                            <div class="mt-4 flex items-center">
+                                                <div class="text-xs text-gray-500 mr-4">
+                                                    <i class="fas fa-exchange-alt mr-1"></i>
+                                                    Workflow:
+                                                </div>
+                                                <div class="flex space-x-1">
+                                                    <span class="text-xs px-2 py-1 bg-golden-orange text-white rounded">To Do</span>
+                                                    <span class="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded">In Progress</span>
+                                                    <span class="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded">Review</span>
+                                                    <span class="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded">PM Approval</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="flex items-center mt-4">
+                                                <div class="flex items-center text-xs text-gray-500 mr-4">
+                                                    <i class="fas fa-paperclip mr-1"></i>
+                                                    <span>2 attachments</span>
+                                                </div>
+                                                <div class="flex items-center text-xs text-gray-500 mr-4">
+                                                    <i class="fas fa-clock mr-1"></i>
+                                                    <span>Due: Tomorrow</span>
+                                                </div>
+                                                <div class="flex items-center text-xs text-gray-500">
+                                                    <i class="fas fa-hourglass-half mr-1"></i>
+                                                    <span>0h spent / 12h est.</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="flex items-center mt-4">
+                                                <div class="flex-1 mr-4">
+                                                    <div class="flex justify-between text-xs mb-1">
+                                                        <span class="text-gray-500">Progress</span>
+                                                        <span class="font-medium text-golden-orange">0%</span>
+                                                    </div>
+                                                    <div class="progress-bar">
+                                                        <div class="progress-fill bg-golden-orange" style="width: 0%"></div>
+                                                    </div>
+                                                </div>
+                                                <div class="flex space-x-2">
+                                                    <button class="px-3 py-2 bg-golden-orange text-white text-sm rounded-lg flex items-center start-task-btn">
+                                                        <i class="fas fa-play mr-2"></i>
+                                                        Start Task
+                                                    </button>
+                                                    <button class="px-3 py-2 border border-dark-teal text-dark-teal text-sm rounded-lg flex items-center view-task-btn">
+                                                        <i class="fas fa-eye mr-2"></i>
+                                                        Details
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Task Item 3 (In Review) -->
+                                <div class="task-card bg-white rounded-xl shadow-sm p-5 card-hover transition task-status-review"
+                                     data-task-id="3"
+                                     data-status="review">
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex-1">
+                                            <div class="flex justify-between">
+                                                <h4 class="font-medium text-lg text-ink-black">Product Page Responsive Fixes</h4>
+                                                <div class="flex items-center space-x-2">
+                                                    <span class="text-xs task-type-bug px-2 py-1 rounded-full">Bug</span>
+                                                    <span class="text-xs priority-high px-2 py-1 rounded-full">High</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="flex items-center mt-2">
+                                                <span class="text-sm text-gray-500 mr-3">
+                                                    <i class="fas fa-project-diagram mr-1"></i>
+                                                    E-commerce Platform
+                                                </span>
+                                                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                                                    <i class="fas fa-user-tie mr-1"></i>PM: Michael Chen
+                                                </span>
+                                            </div>
+                                            
+                                            <p class="text-gray-600 mt-3">Fix layout issues on mobile devices and tablet breakpoints. Ensure all product images are properly displayed across devices.</p>
+                                            
+                                            <!-- Review Status -->
+                                            <div class="mt-3 p-3 bg-yellow-50 border border-yellow-100 rounded-lg">
+                                                <div class="flex items-start">
+                                                    <i class="fas fa-clock text-golden-orange mt-1 mr-2"></i>
+                                                    <div>
+                                                        <p class="text-sm font-medium text-golden-orange">Submitted for Review</p>
+                                                        <p class="text-xs text-gray-600">Waiting for PM (Michael Chen) approval. Submitted on Aug 15.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="flex items-center mt-4">
+                                                <div class="flex items-center text-xs text-gray-500 mr-4">
+                                                    <i class="fas fa-paperclip mr-1"></i>
+                                                    <span>2 attachments</span>
+                                                </div>
+                                                <div class="flex items-center text-xs text-gray-500 mr-4">
+                                                    <i class="fas fa-clock mr-1"></i>
+                                                    <span>Completed: Aug 15</span>
+                                                </div>
+                                                <div class="flex items-center text-xs text-gray-500">
+                                                    <i class="fas fa-hourglass-half mr-1"></i>
+                                                    <span>6.5h spent / 6h est.</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="flex items-center mt-4">
+                                                <div class="flex-1 mr-4">
+                                                    <div class="flex justify-between text-xs mb-1">
+                                                        <span class="text-gray-500">Progress</span>
+                                                        <span class="font-medium text-burnt-caramel">100%</span>
+                                                    </div>
+                                                    <div class="progress-bar">
+                                                        <div class="progress-fill bg-burnt-caramel" style="width: 100%"></div>
+                                                    </div>
+                                                </div>
+                                                <div class="flex space-x-2">
+                                                    <button class="px-3 py-2 border border-dark-teal text-dark-teal text-sm rounded-lg flex items-center view-task-btn">
+                                                        <i class="fas fa-eye mr-2"></i>
+                                                        View Details
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Task Item 4 (Approved - Done) -->
+                                <div class="task-card bg-white rounded-xl shadow-sm p-5 card-hover transition task-status-done"
+                                     data-task-id="4"
+                                     data-status="done">
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex-1">
+                                            <div class="flex justify-between">
+                                                <h4 class="font-medium text-lg text-ink-black">User Authentication Flow</h4>
+                                                <div class="flex items-center space-x-2">
+                                                    <span class="text-xs task-type-feature px-2 py-1 rounded-full">Feature</span>
+                                                    <span class="text-xs priority-medium px-2 py-1 rounded-full">Medium</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="flex items-center mt-2">
+                                                <span class="text-sm text-gray-500 mr-3">
+                                                    <i class="fas fa-project-diagram mr-1"></i>
+                                                    Customer Portal
+                                                </span>
+                                                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                                                    <i class="fas fa-user-tie mr-1"></i>PM: Sarah Johnson
+                                                </span>
+                                            </div>
+                                            
+                                            <p class="text-gray-600 mt-3">Implement login, registration, and password reset functionality with JWT authentication.</p>
+                                            
+                                            <!-- Approved Status -->
+                                            <div class="mt-3 p-3 bg-green-50 border border-green-100 rounded-lg">
+                                                <div class="flex items-start">
+                                                    <i class="fas fa-check-circle text-pearl-aqua mt-1 mr-2"></i>
+                                                    <div>
+                                                        <p class="text-sm font-medium text-pearl-aqua">Approved by PM</p>
+                                                        <p class="text-xs text-gray-600">Approved by Sarah Johnson on Aug 10. Task marked as completed.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="flex items-center mt-4">
+                                                <div class="flex items-center text-xs text-gray-500 mr-4">
+                                                    <i class="fas fa-paperclip mr-1"></i>
+                                                    <span>4 attachments</span>
+                                                </div>
+                                                <div class="flex items-center text-xs text-gray-500 mr-4">
+                                                    <i class="fas fa-clock mr-1"></i>
+                                                    <span>Completed: Aug 10</span>
+                                                </div>
+                                                <div class="flex items-center text-xs text-gray-500">
+                                                    <i class="fas fa-hourglass-half mr-1"></i>
+                                                    <span>10h spent / 12h est.</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="flex items-center mt-4">
+                                                <div class="flex-1 mr-4">
+                                                    <div class="flex justify-between text-xs mb-1">
+                                                        <span class="text-gray-500">Progress</span>
+                                                        <span class="font-medium text-pearl-aqua">100%</span>
+                                                    </div>
+                                                    <div class="progress-bar">
+                                                        <div class="progress-fill bg-pearl-aqua" style="width: 100%"></div>
+                                                    </div>
+                                                </div>
+                                                <div class="flex space-x-2">
+                                                    <button class="px-3 py-2 border border-dark-teal text-dark-teal text-sm rounded-lg flex items-center view-task-btn">
+                                                        <i class="fas fa-eye mr-2"></i>
+                                                        View Details
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sidebar with Task Details & Actions -->
+                    <div class="space-y-6">
+                        <!-- Today's Standup Summary -->
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-semibold text-ink-black">Today's Standup</h3>
+                                <span class="text-xs bg-pearl-aqua text-ink-black px-2 py-1 rounded">Submitted</span>
+                            </div>
+                            <div class="space-y-3">
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Yesterday's Work</p>
+                                    <p class="text-sm">Completed shopping cart UI improvements (75%), fixed mobile layout issues for product pages.</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Today's Plan</p>
+                                    <p class="text-sm">Finish cart animations, start checkout page payment section.</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Blockers</p>
+                                    <p class="text-sm">None at the moment.</p>
+                                </div>
+                            </div>
+                            <button class="w-full mt-4 px-4 py-2 border border-dark-teal text-dark-teal rounded-lg flex items-center justify-center">
+                                <i class="fas fa-edit mr-2"></i>
+                                Update Standup
+                            </button>
+                        </div>
+                        
+                        <!-- Task Statistics -->
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <h3 class="text-lg font-semibold text-ink-black mb-4">Task Statistics</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <div class="flex justify-between text-sm mb-1">
+                                        <span class="text-gray-600">By Status</span>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between items-center">
+                                            <div class="flex items-center">
+                                                <div class="w-3 h-3 bg-golden-orange rounded-full mr-2"></div>
+                                                <span class="text-sm">To Do</span>
+                                            </div>
+                                            <span class="text-sm font-medium">3 tasks</span>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <div class="flex items-center">
+                                                <div class="w-3 h-3 bg-dark-cyan rounded-full mr-2"></div>
+                                                <span class="text-sm">In Progress</span>
+                                            </div>
+                                            <span class="text-sm font-medium">2 tasks</span>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <div class="flex items-center">
+                                                <div class="w-3 h-3 bg-burnt-caramel rounded-full mr-2"></div>
+                                                <span class="text-sm">In Review</span>
+                                            </div>
+                                            <span class="text-sm font-medium">2 tasks</span>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <div class="flex items-center">
+                                                <div class="w-3 h-3 bg-pearl-aqua rounded-full mr-2"></div>
+                                                <span class="text-sm">Approved</span>
+                                            </div>
+                                            <span class="text-sm font-medium">1 task</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="pt-4 border-t border-gray-200">
+                                    <div class="flex justify-between text-sm mb-3">
+                                        <span class="text-gray-600">Time Distribution</span>
+                                        <span class="font-medium">24h this week</span>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <div>
+                                            <div class="flex justify-between text-xs mb-1">
+                                                <span>E-commerce Platform</span>
+                                                <span>16h</span>
+                                            </div>
+                                            <div class="progress-bar">
+                                                <div class="progress-fill bg-dark-teal" style="width: 66%"></div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div class="flex justify-between text-xs mb-1">
+                                                <span>Customer Portal</span>
+                                                <span>8h</span>
+                                            </div>
+                                            <div class="progress-bar">
+                                                <div class="progress-fill bg-dark-cyan" style="width: 34%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Upcoming Deadlines -->
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-semibold text-ink-black">Upcoming Deadlines</h3>
+                                <button class="text-dark-teal text-sm font-medium">View Calendar</button>
+                            </div>
+                            
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                                    <div>
+                                        <p class="text-sm font-medium">Shopping Cart UI</p>
+                                        <p class="text-xs text-gray-500">Today</p>
+                                    </div>
+                                    <span class="text-xs px-2 py-1 bg-dark-teal text-white rounded-full">High</span>
+                                </div>
+                                
+                                <div class="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
+                                    <div>
+                                        <p class="text-sm font-medium">Checkout Payment</p>
+                                        <p class="text-xs text-gray-500">Tomorrow</p>
+                                    </div>
+                                    <span class="text-xs px-2 py-1 bg-golden-orange text-white rounded-full">Medium</span>
+                                </div>
+                                
+                                <div class="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                                    <div>
+                                        <p class="text-sm font-medium">User Profile Redesign</p>
+                                        <p class="text-xs text-gray-500">Aug 22</p>
+                                    </div>
+                                    <span class="text-xs px-2 py-1 bg-dark-cyan text-white rounded-full">5 days</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Task Detail Modal -->
+    <div id="taskModal" class="fixed inset-0 z-50 overflow-y-auto hidden">
+        <div class="fixed inset-0 bg-black bg-opacity-50 modal-overlay transition-opacity"></div>
+        
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="relative bg-white rounded-xl shadow-lg w-full max-w-4xl max-h-[90vh] overflow-hidden modal-enter">
+                <!-- Modal Header -->
+                <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10">
+                    <div>
+                        <h3 id="modalTaskTitle" class="text-xl font-bold text-ink-black">Task Title</h3>
+                        <div class="flex items-center mt-1">
+                            <span id="modalTaskProject" class="text-sm text-gray-600 mr-3">
+                                <i class="fas fa-project-diagram mr-1"></i>
+                                Project Name
+                            </span>
+                            <span id="modalTaskManager" class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                                <i class="fas fa-user-tie mr-1"></i>PM: Name
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span id="modalTaskType" class="text-xs px-3 py-1 rounded-full">Type</span>
+                        <span id="modalTaskPriority" class="text-xs px-3 py-1 rounded-full">Priority</span>
+                        <button id="closeModal" class="ml-4 text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Modal Content -->
+                <div class="p-6 overflow-y-auto" style="max-height: calc(90vh - 80px)">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Main Content -->
+                        <div class="lg:col-span-2">
+                            <!-- Workflow Steps -->
+                            <div class="mb-6">
+                                <h4 class="text-lg font-semibold text-ink-black mb-3">Workflow Status</h4>
+                                <div class="flex justify-between items-center">
+                                    <div class="workflow-step completed">
+                                        <p class="text-sm font-medium">To Do</p>
+                                        <p class="text-xs text-gray-500">Assigned by PM</p>
+                                    </div>
+                                    <div class="workflow-step active">
+                                        <p class="text-sm font-medium">In Progress</p>
+                                        <p class="text-xs text-gray-500">Developer working</p>
+                                    </div>
+                                    <div class="workflow-step">
+                                        <p class="text-sm font-medium">Review</p>
+                                        <p class="text-xs text-gray-500">Submit to PM</p>
+                                    </div>
+                                    <div class="workflow-step">
+                                        <p class="text-sm font-medium">PM Approval</p>
+                                        <p class="text-xs text-gray-500">PM reviews work</p>
+                                    </div>
+                                    <div class="workflow-step">
+                                        <p class="text-sm font-medium">Done</p>
+                                        <p class="text-xs text-gray-500">Task completed</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Description -->
+                            <div class="mb-6">
+                                <h4 class="text-lg font-semibold text-ink-black mb-2">Task Description</h4>
+                                <div id="modalTaskDescription" class="text-gray-700 bg-gray-50 p-4 rounded-lg">
+                                    Task description will appear here.
+                                </div>
+                            </div>
+                            
+                            <!-- Project Description -->
+                            <div class="mb-6">
+                                <h4 class="text-lg font-semibold text-ink-black mb-2">Project Overview</h4>
+                                <div id="modalProjectDescription" class="text-gray-700">
+                                    <p class="text-sm">This task is part of the E-commerce Platform project. The project aims to build a modern online shopping platform with features including product catalog, shopping cart, checkout, and user accounts.</p>
+                                    <div class="mt-2 flex items-center text-sm text-gray-500">
+                                        <i class="fas fa-calendar mr-2"></i>
+                                        <span>Project Timeline: Aug 1 - Oct 30, 2023</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Progress & Time Tracking -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                <div>
+                                    <h4 class="text-lg font-semibold text-ink-black mb-2">Progress</h4>
+                                    <div class="progress-bar mb-2">
+                                        <div id="modalTaskProgressBar" class="progress-fill bg-dark-cyan" style="width: 75%"></div>
+                                    </div>
+                                    <div class="flex justify-between text-sm">
+                                        <span id="modalTaskProgressText" class="text-gray-600">75% complete</span>
+                                        <span id="modalTaskStatus" class="font-medium text-dark-cyan">In Progress</span>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <h4 class="text-lg font-semibold text-ink-black mb-2">Time Tracking</h4>
+                                    <div class="space-y-3">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-gray-600">Estimated Hours:</span>
+                                            <span id="modalTaskHoursEstimated" class="font-medium">8h</span>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-gray-600">Actual Hours:</span>
+                                            <span id="modalTaskHoursActual" class="font-medium">6h</span>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-gray-600">Remaining:</span>
+                                            <span id="modalTaskHoursRemaining" class="font-medium text-dark-cyan">2h</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Comments -->
+                            <div class="mb-6">
+                                <div class="flex justify-between items-center mb-3">
+                                    <h4 class="text-lg font-semibold text-ink-black">Comments & Discussion</h4>
+                                    <span id="modalCommentsCount" class="text-sm text-gray-500">3 comments</span>
+                                </div>
+                                <div id="modalTaskComments" class="space-y-4">
+                                    <!-- Comments will be populated here -->
+                                </div>
+                                <div class="mt-4">
+                                    <textarea id="commentInput" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-teal focus:border-transparent" rows="2" placeholder="Add a comment or ask a question..."></textarea>
+                                    <div class="flex justify-end mt-2">
+                                        <button id="submitComment" class="px-4 py-2 bg-dark-teal text-white rounded-lg">
+                                            <i class="fas fa-paper-plane mr-2"></i>
+                                            Post Comment
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Sidebar -->
+                        <div class="space-y-6">
+                            <!-- Task Details -->
+                            <div class="bg-gray-50 rounded-xl p-5">
+                                <h4 class="text-lg font-semibold text-ink-black mb-3">Task Details</h4>
+                                <div class="space-y-3">
+                                    <div>
+                                        <p class="text-sm text-gray-500">Assigned To</p>
+                                        <div class="flex items-center mt-1">
+                                            <div class="w-8 h-8 rounded-full bg-dark-cyan flex items-center justify-center text-white font-bold text-sm mr-2">
+                                                AC
+                                            </div>
+                                            <div>
+                                                <span id="modalTaskAssignedTo" class="font-medium">Alex Chen</span>
+                                                <p class="text-xs text-gray-500">Frontend Developer</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <p class="text-sm text-gray-500">Created By</p>
+                                        <div class="flex items-center mt-1">
+                                            <div class="w-6 h-6 rounded-full bg-golden-orange flex items-center justify-center text-white font-bold text-xs mr-2">
+                                                MC
+                                            </div>
+                                            <span class="font-medium">Michael Chen</span>
+                                            <span class="text-xs text-gray-500 ml-2">(Project Manager)</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <p class="text-sm text-gray-500">Created Date</p>
+                                        <p id="modalTaskCreated" class="font-medium">Aug 10, 2023</p>
+                                    </div>
+                                    
+                                    <div>
+                                        <p class="text-sm text-gray-500">Due Date</p>
+                                        <p id="modalTaskDueDate" class="font-medium">Today</p>
+                                    </div>
+                                    
+                                    <div>
+                                        <p class="text-sm text-gray-500">Attachments</p>
+                                        <div id="modalTaskAttachments" class="mt-1 space-y-2">
+                                            <!-- Attachments will be populated here -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Task Actions -->
+                            <div class="bg-gray-50 rounded-xl p-5">
+                                <h4 class="text-lg font-semibold text-ink-black mb-3">Task Actions</h4>
+                                <div class="space-y-3">
+                                    <button id="startTaskBtn" class="w-full px-4 py-3 bg-golden-orange text-white rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-play mr-2"></i>
+                                        Start Task
+                                    </button>
+                                    <button id="submitTaskBtn" class="w-full px-4 py-3 border border-dark-teal text-dark-teal rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-paper-plane mr-2"></i>
+                                        Submit for Review
+                                    </button>
+                                    <button id="logTimeBtn" class="w-full px-4 py-3 border border-gray-300 text-gray-700 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-clock mr-2"></i>
+                                        Log Time Entry
+                                    </button>
+                                    <button id="attachFileBtn" class="w-full px-4 py-3 border border-gray-300 text-gray-700 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-paperclip mr-2"></i>
+                                        Attach File
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Task History -->
+                            <div class="bg-gray-50 rounded-xl p-5">
+                                <div class="flex justify-between items-center mb-3">
+                                    <h4 class="text-lg font-semibold text-ink-black">Activity History</h4>
+                                </div>
+                                <div id="modalTaskHistory" class="space-y-3">
+                                    <!-- Activity items will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Submit for Review Modal -->
+    <div id="submitModal" class="fixed inset-0 z-50 overflow-y-auto hidden">
+        <div class="fixed inset-0 bg-black bg-opacity-50 modal-overlay transition-opacity"></div>
+        
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="relative bg-white rounded-xl shadow-lg w-full max-w-lg max-h-[90vh] overflow-hidden modal-enter">
+                <!-- Modal Header -->
+                <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10">
+                    <h3 class="text-xl font-bold text-ink-black">Submit Task for Review</h3>
+                    <button id="closeSubmitModal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <!-- Modal Content -->
+                <div class="p-6">
+                    <div class="mb-6">
+                        <p class="text-gray-600 mb-4">You are about to submit this task to your Project Manager for review. Please provide details of your work.</p>
+                        
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Progress Percentage</label>
+                            <div class="flex items-center">
+                                <input type="range" id="submitProgress" min="0" max="100" value="100" class="flex-1">
+                                <span id="progressValue" class="ml-4 text-lg font-bold text-dark-teal">100%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Work Description</label>
+                            <textarea id="submitDescription" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-teal focus:border-transparent" rows="4" placeholder="Describe what you have completed, any issues faced, and important details for the PM..."></textarea>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Time Spent (hours)</label>
+                            <input type="number" id="submitTimeSpent" class="w-full px-4 py-2 border border-gray-300 rounded-lg" min="0" step="0.5" value="8">
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Attachments (Optional)</label>
+                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                                <i class="fas fa-cloud-upload-alt text-gray-400 text-2xl mb-2"></i>
+                                <p class="text-sm text-gray-500">Drag & drop files or <span class="text-dark-teal cursor-pointer">browse</span></p>
+                                <p class="text-xs text-gray-400 mt-1">Screenshots, code snippets, test results</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3">
+                        <button id="cancelSubmit" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg">
+                            Cancel
+                        </button>
+                        <button id="confirmSubmit" class="px-4 py-2 bg-dark-teal text-white rounded-lg">
+                            <i class="fas fa-paper-plane mr-2"></i>
+                            Submit for Review
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Task data for the modal
+        const taskData = {
+            1: {
+                id: 1,
+                title: "Shopping Cart UI Improvements",
+                project: "E-commerce Platform",
+                projectManager: "Michael Chen",
+                type: "feature",
+                priority: "high",
+                status: "in_progress",
+                progress: 75,
+                description: `<p><strong>Objective:</strong> Redesign the shopping cart interface to improve user experience and mobile responsiveness.</p>
+                <p class="mt-2"><strong>Requirements:</strong></p>
+                <ul class="list-disc pl-5 mt-1 space-y-1">
+                    <li>Implement responsive cart layout for all screen sizes</li>
+                    <li>Add quantity controls (+/- buttons) for each item</li>
+                    <li>Implement smooth animations for adding/removing items</li>
+                    <li>Display subtotal, taxes, and shipping costs clearly</li>
+                    <li>Add product thumbnail images in cart items</li>
+                </ul>`,
+                projectDescription: "Build a modern e-commerce platform with full shopping functionality including product catalog, cart, checkout, and user accounts. Target completion: Q4 2023.",
+                hours_estimated: 8,
+                hours_actual: 6,
+                due_date: "Today",
+                attachments: 3,
+                attachments_list: [
+                    { id: 1, name: "design_mockup.png", size: "2.4 MB", type: "image" },
+                    { id: 2, name: "requirements.pdf", size: "1.2 MB", type: "document" },
+                    { id: 3, name: "cart_flow.fig", size: "3.7 MB", type: "design" }
+                ],
+                comments: [
+                    { id: 1, user: "Michael Chen", role: "Project Manager", time: "2 hours ago", content: "Please make sure the mobile design matches the mockups exactly. The spacing is critical for touch interactions.", avatar: "MC" },
+                    { id: 2, user: "Alex Chen", role: "Developer", time: "1 hour ago", content: "Working on the animations now. Should have it ready by end of day.", avatar: "AC" }
+                ],
+                activity: [
+                    { id: 1, action: "Task assigned by Michael Chen", time: "Aug 10, 9:30 AM" },
+                    { id: 2, action: "Status changed to In Progress", time: "Aug 11, 2:15 PM" },
+                    { id: 3, action: "Time logged: 2 hours", time: "Aug 12, 11:45 AM" },
+                    { id: 4, action: "Comment added by PM", time: "Aug 12, 1:20 PM" }
+                ],
+                created: "Aug 10, 2023",
+                assigned_to: "Alex Chen"
+            },
+            2: {
+                id: 2,
+                title: "Checkout Page - Payment Section",
+                project: "E-commerce Platform",
+                projectManager: "Michael Chen",
+                type: "feature",
+                priority: "medium",
+                status: "todo",
+                progress: 0,
+                description: `<p><strong>Objective:</strong> Implement payment method selection and credit card form with validation.</p>
+                <p class="mt-2"><strong>Requirements:</strong></p>
+                <ul class="list-disc pl-5 mt-1 space-y-1">
+                    <li>Design payment method selection UI (Credit Card, PayPal, Apple Pay)</li>
+                    <li>Implement credit card form with real-time validation</li>
+                    <li>Integrate with Stripe API for payment processing</li>
+                    <li>Add security features (CVV, expiration date validation)</li>
+                    <li>Test payment flow thoroughly</li>
+                </ul>`,
+                projectDescription: "Build a modern e-commerce platform with full shopping functionality including product catalog, cart, checkout, and user accounts. Target completion: Q4 2023.",
+                hours_estimated: 12,
+                hours_actual: 0,
+                due_date: "Tomorrow",
+                attachments: 2,
+                attachments_list: [
+                    { id: 1, name: "payment_design.fig", size: "4.1 MB", type: "design" },
+                    { id: 2, name: "api_documentation.pdf", size: "0.8 MB", type: "document" }
+                ],
+                comments: [
+                    { id: 1, user: "Michael Chen", role: "Project Manager", time: "3 days ago", content: "This is a priority for this sprint. Let me know if you need any resources.", avatar: "MC" }
+                ],
+                activity: [
+                    { id: 1, action: "Task created", time: "Aug 12, 10:00 AM" },
+                    { id: 2, action: "Task assigned to Alex Chen", time: "Aug 12, 10:05 AM" }
+                ],
+                created: "Aug 12, 2023",
+                assigned_to: "Alex Chen"
+            },
+            3: {
+                id: 3,
+                title: "Product Page Responsive Fixes",
+                project: "E-commerce Platform",
+                projectManager: "Michael Chen",
+                type: "bug",
+                priority: "high",
+                status: "review",
+                progress: 100,
+                description: `<p><strong>Issue:</strong> Layout breaks on mobile devices and tablet breakpoints.</p>
+                <p class="mt-2"><strong>Required Fixes:</strong></p>
+                <ul class="list-disc pl-5 mt-1 space-y-1">
+                    <li>Fix product image display on iPhone 12 and iPad Pro</li>
+                    <li>Adjust product description text wrapping on mobile</li>
+                    <li>Fix button alignment on tablet viewports</li>
+                    <li>Ensure all product images are properly displayed across devices</li>
+                </ul>`,
+                projectDescription: "Build a modern e-commerce platform with full shopping functionality including product catalog, cart, checkout, and user accounts. Target completion: Q4 2023.",
+                hours_estimated: 6,
+                hours_actual: 6.5,
+                due_date: "Aug 15, 2023",
+                attachments: 2,
+                attachments_list: [
+                    { id: 1, name: "bug_report.pdf", size: "0.5 MB", type: "document" },
+                    { id: 2, name: "test_results.xlsx", size: "0.3 MB", type: "document" }
+                ],
+                comments: [
+                    { id: 1, user: "Lisa Wang", role: "QA Tester", time: "1 week ago", content: "Found layout issues on iPhone 12 and iPad Pro. Screenshots attached.", avatar: "LW" },
+                    { id: 2, user: "Alex Chen", role: "Developer", time: "3 days ago", content: "Fixed the mobile layout issues. Please review.", avatar: "AC" }
+                ],
+                activity: [
+                    { id: 1, action: "Bug reported by QA", time: "Aug 8, 2:00 PM" },
+                    { id: 2, action: "Task assigned to Alex Chen", time: "Aug 9, 9:15 AM" },
+                    { id: 3, action: "Status changed to In Progress", time: "Aug 10, 10:30 AM" },
+                    { id: 4, action: "Submitted for PM review", time: "Aug 15, 11:20 AM" }
+                ],
+                created: "Aug 8, 2023",
+                assigned_to: "Alex Chen"
+            },
+            4: {
+                id: 4,
+                title: "User Authentication Flow",
+                project: "Customer Portal",
+                projectManager: "Sarah Johnson",
+                type: "feature",
+                priority: "medium",
+                status: "done",
+                progress: 100,
+                description: `<p><strong>Objective:</strong> Implement secure user authentication system.</p>
+                <p class="mt-2"><strong>Requirements:</strong></p>
+                <ul class="list-disc pl-5 mt-1 space-y-1">
+                    <li>User registration with email verification</li>
+                    <li>Login with email/password</li>
+                    <li>Password reset functionality</li>
+                    <li>JWT token-based authentication</li>
+                    <li>Session management</li>
+                </ul>`,
+                projectDescription: "Customer portal for managing accounts, viewing history, and accessing premium features. Target completion: Q3 2023.",
+                hours_estimated: 12,
+                hours_actual: 10,
+                due_date: "Aug 10, 2023",
+                attachments: 4,
+                attachments_list: [
+                    { id: 1, name: "auth_diagram.png", size: "1.5 MB", type: "image" },
+                    { id: 2, name: "security_specs.pdf", size: "0.9 MB", type: "document" },
+                    { id: 3, name: "test_cases.xlsx", size: "0.4 MB", type: "document" },
+                    { id: 4, name: "api_endpoints.json", size: "0.2 MB", type: "code" }
+                ],
+                comments: [
+                    { id: 1, user: "Sarah Johnson", role: "Project Manager", time: "1 week ago", content: "Great work on the authentication flow. All tests passed.", avatar: "SJ" },
+                    { id: 2, user: "Alex Chen", role: "Developer", time: "1 week ago", content: "Implemented all requirements. Ready for review.", avatar: "AC" }
+                ],
+                activity: [
+                    { id: 1, action: "Task assigned by Sarah Johnson", time: "Aug 1, 11:00 AM" },
+                    { id: 2, action: "Status changed to In Progress", time: "Aug 2, 9:30 AM" },
+                    { id: 3, action: "Submitted for review", time: "Aug 9, 3:45 PM" },
+                    { id: 4, action: "Approved by PM", time: "Aug 10, 10:15 AM" }
+                ],
+                created: "Aug 1, 2023",
+                assigned_to: "Alex Chen"
+            }
+        };
+
+        // Sidebar toggle functionality
+        document.getElementById('sidebarToggle').addEventListener('click', function() {
+            const sidebar = document.querySelector('.sidebar');
+            sidebar.classList.toggle('w-64');
+            sidebar.classList.toggle('w-20');
+            
+            const sidebarTexts = document.querySelectorAll('.sidebar span');
+            sidebarTexts.forEach(text => {
+                text.classList.toggle('hidden');
+            });
+            
+            const logoText = document.querySelector('.sidebar p');
+            if (logoText) logoText.classList.toggle('hidden');
+        });
+        
+        // Timer functionality
+        let timerInterval;
+        let seconds = 12600; // Start at 3.5 hours (for demo)
+        let timerRunning = false;
+        
+        document.getElementById('timerToggle').addEventListener('click', function() {
+            if (!timerRunning) {
+                timerRunning = true;
+                this.innerHTML = '<i class="fas fa-pause"></i>';
+                document.getElementById('timerDisplay').classList.add('timer-active');
+                
+                timerInterval = setInterval(function() {
+                    seconds++;
+                    updateTimerDisplay();
+                }, 1000);
+            } else {
+                timerRunning = false;
+                this.innerHTML = '<i class="fas fa-play"></i>';
+                document.getElementById('timerDisplay').classList.remove('timer-active');
+                clearInterval(timerInterval);
+            }
+        });
+        
+        function updateTimerDisplay() {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            
+            document.getElementById('timerValue').textContent = 
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        // Initialize timer display
+        updateTimerDisplay();
+
+        // Tab filtering functionality
+        document.querySelectorAll('.tab-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const status = this.getAttribute('data-status');
+                
+                // Update active tab
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.classList.remove('bg-dark-teal', 'text-white');
+                    btn.classList.add('border', 'border-dark-teal', 'text-dark-teal');
+                });
+                
+                this.classList.remove('border', 'border-dark-teal', 'text-dark-teal');
+                this.classList.add('bg-dark-teal', 'text-white');
+                
+                // Filter tasks
+                filterTasks(status);
+            });
+        });
+
+        function filterTasks(status) {
+            const taskCards = document.querySelectorAll('.task-card');
+            let visibleCount = 0;
+            
+            taskCards.forEach(card => {
+                const cardStatus = card.getAttribute('data-status');
+                
+                if (status === 'all' || cardStatus === status) {
+                    card.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            
+            document.getElementById('taskCount').textContent = visibleCount;
+        }
+
+        // Open task detail modal
+        document.querySelectorAll('.view-task-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const taskCard = this.closest('.task-card');
+                const taskId = taskCard.getAttribute('data-task-id');
+                openTaskModal(taskId);
+            });
+        });
+
+        // Open task modal by clicking on task card
+        document.querySelectorAll('.task-card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                if (!e.target.closest('button')) {
+                    const taskId = this.getAttribute('data-task-id');
+                    openTaskModal(taskId);
+                }
+            });
+        });
+
+        // Start task buttons
+        document.querySelectorAll('.start-task-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const taskCard = this.closest('.task-card');
+                const taskId = taskCard.getAttribute('data-task-id');
+                startTask(taskId);
+            });
+        });
+
+        // Submit for review buttons
+        document.querySelectorAll('.submit-review-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const taskCard = this.closest('.task-card');
+                const taskId = taskCard.getAttribute('data-task-id');
+                openSubmitModal(taskId);
+            });
+        });
+
+        function startTask(taskId) {
+            const taskCard = document.querySelector(`.task-card[data-task-id="${taskId}"]`);
+            const task = taskData[taskId];
+            
+            if (!task || task.status !== 'todo') return;
+            
+            // Update task status in data
+            task.status = 'in_progress';
+            task.progress = 10;
+            
+            // Update task card
+            taskCard.setAttribute('data-status', 'in_progress');
+            taskCard.classList.remove('task-status-todo');
+            taskCard.classList.add('task-status-progress');
+            
+            // Update workflow display
+            const workflowSpans = taskCard.querySelectorAll('.flex.space-x-1 span');
+            if (workflowSpans.length >= 2) {
+                workflowSpans[0].classList.remove('bg-gray-200', 'text-gray-600');
+                workflowSpans[0].classList.add('bg-pearl-aqua', 'text-ink-black');
+                workflowSpans[1].classList.remove('bg-gray-200', 'text-gray-600');
+                workflowSpans[1].classList.add('bg-dark-cyan', 'text-white');
+            }
+            
+            // Update button
+            const startBtn = taskCard.querySelector('.start-task-btn');
+            if (startBtn) {
+                startBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Submit for Review';
+                startBtn.classList.remove('bg-golden-orange');
+                startBtn.classList.add('bg-dark-cyan');
+                startBtn.classList.remove('start-task-btn');
+                startBtn.classList.add('submit-review-btn');
+                
+                // Update event listener
+                startBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    openSubmitModal(taskId);
+                });
+            }
+            
+            // Update progress
+            const progressBar = taskCard.querySelector('.progress-fill');
+            const progressText = taskCard.querySelector('.font-medium.text-golden-orange');
+            if (progressBar) progressBar.style.width = '10%';
+            if (progressText) {
+                progressText.textContent = '10%';
+                progressText.classList.remove('text-golden-orange');
+                progressText.classList.add('text-dark-cyan');
+            }
+            
+            // Start timer if not running
+            if (!timerRunning) {
+                document.getElementById('timerToggle').click();
+            }
+            
+            // Show notification
+            showNotification('Task Started', `You have started working on "${task.title}"`, 'success');
+        }
+
+        function openSubmitModal(taskId) {
+            const task = taskData[taskId];
+            if (!task) return;
+            
+            // Set values in submit modal
+            document.getElementById('submitProgress').value = task.progress;
+            document.getElementById('progressValue').textContent = `${task.progress}%`;
+            document.getElementById('submitTimeSpent').value = task.hours_actual;
+            
+            // Show modal
+            document.getElementById('submitModal').classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+            
+            // Store task ID for later use
+            document.getElementById('submitModal').setAttribute('data-task-id', taskId);
+        }
+
+        // Close submit modal
+        document.getElementById('closeSubmitModal').addEventListener('click', closeSubmitModal);
+        document.getElementById('cancelSubmit').addEventListener('click', closeSubmitModal);
+        
+        document.getElementById('submitModal').addEventListener('click', function(e) {
+            if (e.target === this || e.target.classList.contains('modal-overlay')) {
+                closeSubmitModal();
+            }
+        });
+
+        function closeSubmitModal() {
+            document.getElementById('submitModal').classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+
+        // Confirm submit for review
+        document.getElementById('confirmSubmit').addEventListener('click', function() {
+            const taskId = document.getElementById('submitModal').getAttribute('data-task-id');
+            const taskCard = document.querySelector(`.task-card[data-task-id="${taskId}"]`);
+            const task = taskData[taskId];
+            
+            if (!task) return;
+            
+            const progress = parseInt(document.getElementById('submitProgress').value);
+            const description = document.getElementById('submitDescription').value;
+            const timeSpent = parseFloat(document.getElementById('submitTimeSpent').value);
+            
+            // Update task status
+            task.status = 'review';
+            task.progress = progress;
+            task.hours_actual = timeSpent;
+            
+            // Update task card
+            taskCard.setAttribute('data-status', 'review');
+            taskCard.classList.remove('task-status-progress');
+            taskCard.classList.add('task-status-review');
+            
+            // Update workflow display
+            const workflowSpans = taskCard.querySelectorAll('.flex.space-x-1 span');
+            if (workflowSpans.length >= 3) {
+                workflowSpans[0].classList.remove('bg-pearl-aqua', 'text-ink-black');
+                workflowSpans[0].classList.add('bg-gray-200', 'text-gray-600');
+                workflowSpans[1].classList.remove('bg-dark-cyan', 'text-white');
+                workflowSpans[1].classList.add('bg-gray-200', 'text-gray-600');
+                workflowSpans[2].classList.remove('bg-gray-200', 'text-gray-600');
+                workflowSpans[2].classList.add('bg-burnt-caramel', 'text-white');
+            }
+            
+            // Add review status message
+            const existingReview = taskCard.querySelector('.bg-yellow-50');
+            if (!existingReview) {
+                const taskContent = taskCard.querySelector('.flex-1');
+                const reviewDiv = document.createElement('div');
+                reviewDiv.className = 'mt-3 p-3 bg-yellow-50 border border-yellow-100 rounded-lg';
+                reviewDiv.innerHTML = `
+                    <div class="flex items-start">
+                        <i class="fas fa-clock text-golden-orange mt-1 mr-2"></i>
+                        <div>
+                            <p class="text-sm font-medium text-golden-orange">Submitted for Review</p>
+                            <p class="text-xs text-gray-600">Waiting for PM (${task.projectManager}) approval. Submitted just now.</p>
+                        </div>
+                    </div>
+                `;
+                
+                // Insert after description
+                const description = taskCard.querySelector('p.text-gray-600');
+                if (description && description.nextSibling) {
+                    taskContent.insertBefore(reviewDiv, description.nextSibling);
+                }
+            }
+            
+            // Update button
+            const submitBtn = taskCard.querySelector('.submit-review-btn');
+            if (submitBtn) {
+                submitBtn.innerHTML = '<i class="fas fa-eye mr-2"></i>View Details';
+                submitBtn.classList.remove('bg-dark-cyan');
+                submitBtn.classList.add('border', 'border-dark-teal', 'text-dark-teal');
+                submitBtn.classList.remove('submit-review-btn');
+                
+                // Remove old event listener and add view task listener
+                submitBtn.replaceWith(submitBtn.cloneNode(true));
+                const newBtn = taskCard.querySelector('.border-dark-teal');
+                newBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    openTaskModal(taskId);
+                });
+            }
+            
+            // Update progress
+            const progressBar = taskCard.querySelector('.progress-fill');
+            const progressText = taskCard.querySelector('.font-medium.text-dark-cyan');
+            if (progressBar) progressBar.style.width = `${progress}%`;
+            if (progressText) {
+                progressText.textContent = `${progress}%`;
+                progressText.classList.remove('text-dark-cyan');
+                progressText.classList.add('text-burnt-caramel');
+            }
+            
+            // Update time spent
+            const timeElement = taskCard.querySelector('.fa-hourglass-half').parentElement;
+            if (timeElement) {
+                timeElement.innerHTML = `<i class="fas fa-hourglass-half mr-1"></i><span>${timeSpent}h spent / ${task.hours_estimated}h est.</span>`;
+            }
+            
+            // Close modal and show notification
+            closeSubmitModal();
+            showNotification('Task Submitted', `"${task.title}" has been submitted to ${task.projectManager} for review`, 'success');
+        });
+
+        // Function to open task modal with data
+        function openTaskModal(taskId) {
+            const task = taskData[taskId];
+            if (!task) return;
+            
+            // Set basic task info
+            document.getElementById('modalTaskTitle').textContent = task.title;
+            document.getElementById('modalTaskProject').innerHTML = `<i class="fas fa-project-diagram mr-1"></i>${task.project}`;
+            document.getElementById('modalTaskManager').innerHTML = `<i class="fas fa-user-tie mr-1"></i>PM: ${task.projectManager}`;
+            document.getElementById('modalTaskDescription').innerHTML = task.description;
+            document.getElementById('modalProjectDescription').innerHTML = task.projectDescription;
+            document.getElementById('modalTaskHoursEstimated').textContent = `${task.hours_estimated}h`;
+            document.getElementById('modalTaskHoursActual').textContent = `${task.hours_actual}h`;
+            document.getElementById('modalTaskHoursRemaining').textContent = `${task.hours_estimated - task.hours_actual}h`;
+            document.getElementById('modalTaskCreated').textContent = task.created;
+            document.getElementById('modalTaskDueDate').textContent = task.due_date;
+            document.getElementById('modalTaskAssignedTo').textContent = task.assigned_to;
+            document.getElementById('modalCommentsCount').textContent = `${task.comments.length} comments`;
+            
+            // Set task type and priority with appropriate styling
+            const typeElement = document.getElementById('modalTaskType');
+            typeElement.textContent = task.type.charAt(0).toUpperCase() + task.type.slice(1);
+            typeElement.className = `text-xs px-3 py-1 rounded-full task-type-${task.type}`;
+            
+            const priorityElement = document.getElementById('modalTaskPriority');
+            priorityElement.textContent = task.priority.charAt(0).toUpperCase() + task.priority.slice(1);
+            priorityElement.className = `text-xs px-3 py-1 rounded-full priority-${task.priority}`;
+            
+            // Set progress
+            document.getElementById('modalTaskProgressBar').style.width = `${task.progress}%`;
+            document.getElementById('modalTaskProgressText').textContent = `${task.progress}% complete`;
+            
+            // Set status with appropriate styling
+            const statusElement = document.getElementById('modalTaskStatus');
+            let statusText = '';
+            let statusColor = '';
+            
+            switch(task.status) {
+                case 'todo':
+                    statusText = 'To Do';
+                    statusColor = 'text-golden-orange';
+                    break;
+                case 'in_progress':
+                    statusText = 'In Progress';
+                    statusColor = 'text-dark-cyan';
+                    break;
+                case 'review':
+                    statusText = 'In Review';
+                    statusColor = 'text-burnt-caramel';
+                    break;
+                case 'done':
+                    statusText = 'Approved';
+                    statusColor = 'text-pearl-aqua';
+                    break;
+                case 'blocked':
+                    statusText = 'Blocked';
+                    statusColor = 'text-rusty-spice';
+                    break;
+            }
+            
+            statusElement.textContent = statusText;
+            statusElement.className = `font-medium ${statusColor}`;
+            
+            // Update workflow steps
+            updateWorkflowSteps(task.status);
+            
+            // Populate attachments
+            const attachmentsContainer = document.getElementById('modalTaskAttachments');
+            attachmentsContainer.innerHTML = '';
+            
+            task.attachments_list.forEach(attachment => {
+                const attachmentElement = document.createElement('div');
+                attachmentElement.className = 'flex items-center justify-between p-2 hover:bg-gray-100 rounded';
+                attachmentElement.innerHTML = `
+                    <div class="flex items-center">
+                        <i class="fas ${attachment.type === 'image' ? 'fa-image' : attachment.type === 'document' ? 'fa-file' : attachment.type === 'design' ? 'fa-palette' : 'fa-code'} text-dark-teal mr-3"></i>
+                        <div>
+                            <p class="text-sm font-medium">${attachment.name}</p>
+                            <p class="text-xs text-gray-500">${attachment.size}</p>
+                        </div>
+                    </div>
+                    <button class="text-dark-teal hover:text-dark-cyan">
+                        <i class="fas fa-download"></i>
+                    </button>
+                `;
+                attachmentsContainer.appendChild(attachmentElement);
+            });
+            
+            // Populate comments
+            const commentsContainer = document.getElementById('modalTaskComments');
+            commentsContainer.innerHTML = '';
+            
+            task.comments.forEach(comment => {
+                const commentElement = document.createElement('div');
+                commentElement.className = 'bg-gray-50 p-4 rounded-lg comment-bubble';
+                commentElement.innerHTML = `
+                    <div class="flex items-start">
+                        <div class="w-8 h-8 rounded-full ${comment.user === 'Alex Chen' ? 'bg-dark-cyan' : comment.user === 'Michael Chen' ? 'bg-golden-orange' : comment.user === 'Sarah Johnson' ? 'bg-pearl-aqua' : 'bg-dark-teal'} flex items-center justify-center text-white font-bold text-sm mr-3">
+                            ${comment.avatar}
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="font-medium">${comment.user}</p>
+                                    <p class="text-xs text-gray-500">${comment.role}</p>
+                                </div>
+                                <span class="text-xs text-gray-500">${comment.time}</span>
+                            </div>
+                            <p class="mt-2 text-gray-700">${comment.content}</p>
+                        </div>
+                    </div>
+                `;
+                commentsContainer.appendChild(commentElement);
+            });
+            
+            // Populate activity history
+            const activityContainer = document.getElementById('modalTaskHistory');
+            activityContainer.innerHTML = '';
+            
+            task.activity.forEach(activity => {
+                const activityElement = document.createElement('div');
+                activityElement.className = 'flex items-start';
+                activityElement.innerHTML = `
+                    <div class="w-2 h-2 bg-dark-teal rounded-full mt-2 mr-3"></div>
+                    <div class="flex-1">
+                        <p class="text-sm text-gray-800">${activity.action}</p>
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>${activity.time}</span>
+                        </div>
+                    </div>
+                `;
+                activityContainer.appendChild(activityElement);
+            });
+            
+            // Configure action buttons based on task status
+            const startBtn = document.getElementById('startTaskBtn');
+            const submitBtn = document.getElementById('submitTaskBtn');
+            
+            if (task.status === 'todo') {
+                startBtn.innerHTML = '<i class="fas fa-play mr-2"></i> Start Task';
+                startBtn.className = 'w-full px-4 py-3 bg-golden-orange text-white rounded-lg flex items-center justify-center';
+                startBtn.onclick = function() { startTask(taskId); closeModal(); };
+                startBtn.style.display = 'block';
+                
+                submitBtn.style.display = 'none';
+            } else if (task.status === 'in_progress') {
+                startBtn.style.display = 'none';
+                
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i> Submit for Review';
+                submitBtn.className = 'w-full px-4 py-3 bg-dark-teal text-white rounded-lg flex items-center justify-center';
+                submitBtn.onclick = function() { openSubmitModal(taskId); closeModal(); };
+                submitBtn.style.display = 'block';
+            } else if (task.status === 'review' || task.status === 'done') {
+                startBtn.style.display = 'none';
+                submitBtn.style.display = 'none';
+            }
+            
+            // Show modal
+            document.getElementById('taskModal').classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+        }
+
+        function updateWorkflowSteps(status) {
+            const steps = document.querySelectorAll('.workflow-step');
+            steps.forEach(step => {
+                step.classList.remove('active', 'completed');
+            });
+            
+            switch(status) {
+                case 'todo':
+                    steps[0].classList.add('active');
+                    break;
+                case 'in_progress':
+                    steps[0].classList.add('completed');
+                    steps[1].classList.add('active');
+                    break;
+                case 'review':
+                    steps[0].classList.add('completed');
+                    steps[1].classList.add('completed');
+                    steps[2].classList.add('active');
+                    break;
+                case 'done':
+                    steps.forEach(step => step.classList.add('completed'));
+                    break;
+            }
+        }
+
+        // Close modal
+        document.getElementById('closeModal').addEventListener('click', closeModal);
+        
+        document.getElementById('taskModal').addEventListener('click', function(e) {
+            if (e.target === this || e.target.classList.contains('modal-overlay')) {
+                closeModal();
+            }
+        });
+
+        function closeModal() {
+            document.getElementById('taskModal').classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+
+        // Action buttons in modal
+        document.getElementById('logTimeBtn').addEventListener('click', function() {
+            showNotification('Log Time', 'Time logging feature would open here.', 'info');
+        });
+
+        document.getElementById('attachFileBtn').addEventListener('click', function() {
+            showNotification('Attach File', 'File upload dialog would open here.', 'info');
+        });
+
+        // Submit comment
+        document.getElementById('submitComment').addEventListener('click', function() {
+            const commentInput = document.getElementById('commentInput');
+            if (commentInput.value.trim()) {
+                // In a real app, this would submit to the server
+                showNotification('Comment added', 'Your comment has been posted.', 'success');
+                commentInput.value = '';
+            }
+        });
+
+        // Update progress value display in submit modal
+        document.getElementById('submitProgress').addEventListener('input', function() {
+            document.getElementById('progressValue').textContent = `${this.value}%`;
+        });
+
+        // Function to show notification
+        function showNotification(title, message, type) {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 transform transition-transform duration-300 translate-x-full ${type === 'success' ? 'bg-green-50 border border-green-200 text-green-800' : type === 'error' ? 'bg-red-50 border border-red-200 text-red-800' : 'bg-blue-50 border border-blue-200 text-blue-800'}`;
+            notification.innerHTML = `
+                <div class="flex items-start">
+                    <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'} mr-3 mt-1"></i>
+                    <div>
+                        <p class="font-medium">${title}</p>
+                        <p class="text-sm mt-1">${message}</p>
+                    </div>
+                    <button class="ml-4 text-gray-500 hover:text-gray-700" onclick="this.parentElement.parentElement.remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Animate in
+            setTimeout(() => {
+                notification.classList.remove('translate-x-full');
+                notification.classList.add('translate-x-0');
+            }, 10);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.classList.remove('translate-x-0');
+                    notification.classList.add('translate-x-full');
+                    setTimeout(() => {
+                        if (notification.parentElement) {
+                            notification.parentElement.removeChild(notification);
+                        }
+                    }, 300);
+                }
+            }, 5000);
+        }
+        
+        // Simulate initial loading
+        setTimeout(() => {
+            console.log("Developer Tasks page loaded successfully");
+        }, 500);
+    </script>
+</body>
+</html>

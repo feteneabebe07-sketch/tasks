@@ -1,0 +1,629 @@
+<!-- templates/pm/base.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProjectFlow - PM Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% load static %}
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'ink-black': '#001219',
+                        'dark-teal': '#005f73',
+                        'dark-cyan': '#0a9396',
+                        'pearl-aqua': '#94d2bd',
+                        'vanilla-custard': '#e9d8a6',
+                        'golden-orange': '#ee9b00',
+                        'burnt-caramel': '#ca6702',
+                        'rusty-spice': '#bb3e03',
+                        'oxidized-iron': '#ae2012',
+                        'brown-red': '#9b2226',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .sidebar {
+            transition: all 0.3s ease;
+        }
+
+        /* Add these to the existing style section in base.html */
+.status-pending { 
+    background-color: rgba(238, 155, 0, 0.1); 
+    color: #ee9b00; 
+}
+.status-approved { 
+    background-color: rgba(148, 210, 189, 0.1); 
+    color: #94d2bd; 
+}
+.status-changes-requested { 
+    background-color: rgba(187, 62, 3, 0.1); 
+    color: #bb3e03; 
+}
+.filter-active {
+    background-color: rgba(0, 95, 115, 0.1);
+    color: #005f73;
+}
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        .active-tab {
+            background-color: rgba(148, 210, 189, 0.2);
+            border-left: 4px solid #94d2bd;
+        }
+        .task-status-todo { border-left: 4px solid #ee9b00; }
+        .task-status-progress { border-left: 4px solid #0a9396; }
+        .task-status-review { border-left: 4px solid #bb3e03; }
+        .task-status-done { border-left: 4px solid #94d2bd; }
+        .priority-high { background-color: rgba(187, 62, 3, 0.1); color: #bb3e03; }
+        .priority-medium { background-color: rgba(238, 155, 0, 0.1); color: #ca6702; }
+        .priority-low { background-color: rgba(148, 210, 189, 0.1); color: #0a9396; }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: white;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        #chatArea {
+    display: none;
+}
+
+#chatArea.active {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+}
+
+#noChatSelected {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+}
+
+#noChatSelected.hidden {
+    display: none !important;
+}
+
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gray-50">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <div class="sidebar w-64 bg-ink-black text-white flex flex-col">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-pearl-aqua">ProjectFlow</h1>
+                <p class="text-sm text-gray-400 mt-1">PM Dashboard</p>
+            </div>
+            
+            <nav class="flex-1 px-4 py-6">
+                <ul class="space-y-2">
+                    <li>
+                        <a href="{% url 'pm_dashboard' %}" 
+                           class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-teal hover:text-white transition 
+                           {% if request.resolver_match.url_name == 'pm_dashboard' %}active-tab text-pearl-aqua{% endif %}">
+                            <i class="fas fa-tachometer-alt mr-3"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'pm_projects' %}" 
+                           class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-teal hover:text-white transition
+                           {% if request.resolver_match.url_name == 'pm_projects' or request.resolver_match.url_name == 'pm_project_detail' %}active-tab text-pearl-aqua{% endif %}">
+                            <i class="fas fa-project-diagram mr-3"></i>
+                            <span>My Projects</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'pm_team' %}" 
+                           class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-teal hover:text-white transition
+                           {% if request.resolver_match.url_name == 'pm_team' %}active-tab text-pearl-aqua{% endif %}">
+                            <i class="fas fa-users mr-3"></i>
+                            <span>Team</span>
+                        </a>
+                    </li>
+                    <li>
+                        <li>
+    <a href="{% url 'pm_task_reviews' %}" 
+       class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-teal hover:text-white transition
+       {% if request.resolver_match.url_name == 'pm_task_reviews' %}active-tab text-pearl-aqua{% endif %}">
+        <i class="fas fa-clipboard-check mr-3"></i>
+        <span>Task Reviews</span>
+    </a>
+</li>
+                        <a href="{% url 'pm_tasks' %}" 
+                           class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-teal hover:text-white transition
+                           {% if request.resolver_match.url_name == 'pm_tasks' %}active-tab text-pearl-aqua{% endif %}">
+                            <i class="fas fa-tasks mr-3"></i>
+                            <span>Tasks</span>
+                        </a>
+                    </li>
+                   
+                    <li>
+    <a href="{% url 'pm_messages' %}" 
+       class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-teal hover:text-white transition
+       {% if request.resolver_match.url_name == 'pm_messages' %}active-tab text-pearl-aqua{% endif %}">
+        <i class="fas fa-comments mr-3"></i>
+        <span>Messages</span>
+    </a>
+</li>
+                    <li>
+                        <a href="{% url 'pm_reports' %}" 
+                           class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-teal hover:text-white transition
+                           {% if request.resolver_match.url_name == 'pm_reports' %}active-tab text-pearl-aqua{% endif %}">
+                            <i class="fas fa-chart-line mr-3"></i>
+                            <span>Reports</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="p-4 border-t border-dark-teal">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full bg-golden-orange flex items-center justify-center text-white font-bold">
+                        {{ user.first_name|first }}{{ user.last_name|first }}
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium">{{ user.get_full_name }}</p>
+                        <p class="text-xs text-gray-400">Project Manager</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Header -->
+            <header class="bg-white shadow-sm py-4 px-6 flex justify-between items-center">
+                <div class="flex items-center">
+                    <button id="sidebarToggle" class="text-dark-teal mr-4">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    <h2 class="text-xl font-semibold text-ink-black">
+                        {% block page_title %}Project Manager Dashboard{% endblock %}
+                    </h2>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    {% with notification_count=user.notifications.filter.is_read.count %}
+                    <div class="relative">
+                        <button class="text-dark-teal">
+                            <i class="fas fa-bell text-xl"></i>
+                        </button>
+                        {% if notification_count > 0 %}
+                        <span class="absolute -top-1 -right-1 bg-rusty-spice text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                            {{ notification_count }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% endwith %}
+                    
+                    <div class="relative">
+                        <button class="text-dark-teal">
+                            <i class="fas fa-envelope text-xl"></i>
+                        </button>
+                    </div>
+                    
+                    <button id="newTaskBtn" class="bg-dark-teal text-white px-4 py-2 rounded-lg flex items-center">
+                        <i class="fas fa-plus mr-2"></i>
+                        <span>New Task</span>
+                    </button>
+                    <a href="{% url 'logout' %}" class="text-sm text-gray-600 hover:text-dark-teal">Logout</a>
+                </div>
+            </header>
+            
+            <!-- Main Content Area -->
+            <main class="flex-1 overflow-y-auto p-6 bg-gray-50">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    
+    <!-- New Task Modal -->
+<div id="newTaskModal" class="modal">
+    <div class="modal-content">
+        <div class="p-6 border-b border-gray-200">
+            <h3 class="text-xl font-bold text-ink-black">Create New Task</h3>
+        </div>
+        <div class="p-6">
+            <form id="newTaskForm">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Task Title *</label>
+                        <input type="text" id="taskTitle" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Project *</label>
+                        <select id="taskProject" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal" required>
+                            <option value="">Select Project</option>
+                            {% for project in managed_projects %}
+                            <option value="{{ project.id }}">{{ project.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
+                        <select id="taskAssignee" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal">
+                            <option value="">Select Team Member</option>
+                            {% for member_info in member_data %}
+                            <option value="{{ member_info.member.employee.id }}">{{ member_info.user_full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Task Type</label>
+                        <select id="taskType" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal">
+                            <option value="feature">Feature</option>
+                            <option value="bug">Bug</option>
+                            <option value="improvement">Improvement</option>
+                            <option value="research">Research</option>
+                            <option value="documentation">Documentation</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Priority *</label>
+                        <select id="taskPriority" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal" required>
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Due Date *</label>
+                        <input type="date" id="taskDueDate" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Estimated Hours *</label>
+                        <input type="number" id="taskEstimatedHours" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal" min="1" max="100" value="8" required>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea id="taskDescription" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal"></textarea>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" id="cancelTaskBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-dark-teal text-white rounded-md hover:bg-dark-cyan">Create Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Manage Team Modal -->
+<div id="manageTeamModal" class="modal">
+    <div class="modal-content">
+        <div class="p-6 border-b border-gray-200">
+            <h3 class="text-xl font-bold text-ink-black">Manage Team</h3>
+        </div>
+        <div class="p-6">
+            <input type="hidden" id="teamProjectId" value="{% if active_project %}{{ active_project.id }}{% endif %}">
+            
+            <div class="mb-6">
+                <h4 class="text-lg font-medium text-ink-black mb-4">Current Team Members</h4>
+                <div class="space-y-4" id="currentTeamMembers">
+                    {% for member_info in member_data %}
+                    <div class="flex justify-between items-center p-3 border border-gray-200 rounded-lg" data-member-id="{{ member_info.member.employee.id }}">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 rounded-full {{ member_info.color_class }} flex items-center justify-center text-white font-bold">
+                                {{ member_info.initials }}
+                            </div>
+                            <div class="ml-3">
+                                <p class="font-medium">{{ member_info.user_full_name }}</p>
+                                <p class="text-sm text-gray-500">{{ member_info.member.get_role_display }}</p>
+                            </div>
+                        </div>
+                        <button class="text-rusty-spice hover:text-oxidized-iron remove-member" data-member-id="{{ member_info.member.employee.id }}">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    {% empty %}
+                    <p class="text-gray-500 text-center py-2">No team members yet.</p>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <div>
+                <h4 class="text-lg font-medium text-ink-black mb-4">Add Team Member</h4>
+                <div class="flex space-x-3 mb-4">
+                    <select id="availableEmployeeSelect" class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal">
+                        <option value="">Select Employee</option>
+                        <!-- Will be populated via AJAX -->
+                    </select>
+                    <select id="roleSelect" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal">
+                        <option value="dev">Developer</option>
+                        <option value="designer">Designer</option>
+                        <option value="qa">QA Tester</option>
+                        <option value="analyst">Business Analyst</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="mb-4" id="employeeDetails" style="display: none;">
+                    <div class="p-3 bg-gray-50 rounded-lg">
+                        <h5 class="font-medium mb-2" id="employeeName"></h5>
+                        <p class="text-sm text-gray-600" id="employeePosition"></p>
+                        <p class="text-sm text-gray-600" id="employeeDepartment"></p>
+                        <p class="text-sm text-gray-600" id="employeeSkills"></p>
+                    </div>
+                </div>
+                <button id="addMemberBtn" class="w-full px-4 py-2 bg-dark-teal text-white rounded-md hover:bg-dark-cyan">
+                    <i class="fas fa-plus mr-2"></i>Add to Team
+                </button>
+            </div>
+            
+                <div class="flex justify-end space-x-3 pt-6 mt-6 border-t border-gray-200">
+                    <button type="button" id="cancelTeamBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Close</button>
+                    <button type="button" id="saveTeamBtn" class="px-4 py-2 bg-dark-teal text-white rounded-md hover:bg-dark-cyan">Save Changes</button>
+                </div>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Meeting Modal -->
+<div id="scheduleMeetingModal" class="modal">
+    <div class="modal-content">
+        <div class="p-6 border-b border-gray-200">
+            <h3 class="text-xl font-bold text-ink-black">Schedule Team Meeting</h3>
+        </div>
+        <div class="p-6">
+            <form id="scheduleMeetingForm">
+                <input type="hidden" id="meetingProjectId" value="{% if active_project %}{{ active_project.id }}{% endif %}">
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Meeting Title *</label>
+                    <input type="text" id="meetingTitle" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal" required placeholder="e.g., Weekly Sprint Planning">
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+                        <input type="date" id="meetingDate" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Time *</label>
+                        <input type="time" id="meetingTime" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal" required value="10:00">
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Agenda</label>
+                    <textarea id="meetingAgenda" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal" placeholder="What will be discussed in the meeting?"></textarea>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Participants</label>
+                    <div class="border border-gray-200 rounded-md p-4">
+                        <div class="space-y-2">
+                            {% for member_info in member_data %}
+                            <div class="flex items-center">
+                                <div class="w-6 h-6 rounded-full {{ member_info.color_class }} flex items-center justify-center text-white text-xs mr-2">
+                                    {{ member_info.initials }}
+                                </div>
+                                <span class="text-sm">{{ member_info.user_full_name }}</span>
+                                <span class="text-xs text-gray-500 ml-2">({{ member_info.member.get_role_display }})</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">All active team members will be invited</p>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" id="cancelMeetingBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-dark-teal text-white rounded-md hover:bg-dark-cyan">Schedule Meeting</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Request Changes Modal -->
+<div id="requestChangesModal" class="modal">
+    <div class="modal-content">
+        <div class="p-6 border-b border-gray-200">
+            <h3 class="text-xl font-bold text-ink-black">Request Changes</h3>
+        </div>
+        <div class="p-6">
+            <form id="requestChangesForm">
+                <input type="hidden" id="changeTaskId">
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Task</label>
+                    <p class="text-gray-800 font-medium" id="changeTaskTitle"></p>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
+                    <p class="text-gray-600" id="changeTaskAssignee"></p>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Feedback *</label>
+                    <textarea id="changeFeedback" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal" required placeholder="What changes are required? Be specific about what needs to be improved..."></textarea>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" id="cancelChangesBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-dark-teal text-white rounded-md hover:bg-dark-cyan">Request Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirmationModal" class="modal">
+    <div class="modal-content max-w-md">
+        <div class="p-6 text-center">
+            <div class="w-16 h-16 bg-rusty-spice bg-opacity-10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-exclamation-triangle text-rusty-spice text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-ink-black mb-2" id="confirmationTitle"></h3>
+            <p class="text-gray-600 mb-6" id="confirmationMessage"></p>
+            <div class="flex justify-center space-x-3">
+                <button id="confirmCancelBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button id="confirmActionBtn" class="px-4 py-2 bg-rusty-spice text-white rounded-md hover:bg-oxidized-iron">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="modal">
+    <div class="modal-content max-w-md">
+        <div class="p-6 text-center">
+            <div class="w-16 h-16 bg-dark-teal bg-opacity-10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-check text-dark-teal text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-ink-black mb-2" id="successTitle">Success!</h3>
+            <p class="text-gray-600 mb-6" id="successMessage"></p>
+            <button id="closeSuccessBtn" class="px-4 py-2 bg-dark-teal text-white rounded-md hover:bg-dark-cyan">Continue</button>
+        </div>
+    </div>
+</div>
+    <!-- Common JavaScript -->
+    <script>
+        // Sidebar toggle functionality
+        document.getElementById('sidebarToggle').addEventListener('click', function() {
+            const sidebar = document.querySelector('.sidebar');
+            sidebar.classList.toggle('w-64');
+            sidebar.classList.toggle('w-20');
+            
+            // Toggle text in sidebar items
+            const sidebarTexts = document.querySelectorAll('.sidebar span');
+            sidebarTexts.forEach(text => {
+                text.classList.toggle('hidden');
+            });
+            
+            // Toggle logo text
+            const logoText = document.querySelector('.sidebar p');
+            if (logoText) logoText.classList.toggle('hidden');
+        });
+        
+        // Common modal functions
+        function showModal(modal) {
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function hideModal(modal) {
+            if (modal) modal.style.display = 'none';
+        }
+        
+        // Modal event listeners
+        document.getElementById('cancelTaskBtn').addEventListener('click', () => hideModal(document.getElementById('newTaskModal')));
+        document.getElementById('cancelTeamBtn').addEventListener('click', () => hideModal(document.getElementById('manageTeamModal')));
+        
+        // Close modal when clicking outside
+        window.addEventListener('click', (event) => {
+            if (event.target.classList.contains('modal')) {
+                hideModal(event.target);
+            }
+        });
+
+        // Save Team button: close modal and reload to reflect changes
+        document.getElementById('saveTeamBtn')?.addEventListener('click', function() {
+            hideModal(document.getElementById('manageTeamModal'));
+            // reload to refresh team members from server
+            location.reload();
+        });
+
+        // CSRF helper (works on all PM pages)
+        function getCSRFToken() {
+            const name = 'csrftoken=';
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                let c = cookies[i].trim();
+                if (c.indexOf(name) === 0) return c.substring(name.length, c.length);
+            }
+            return '';
+        }
+
+        // New Task form: submit via AJAX to avoid full-page navigation
+        document.addEventListener('DOMContentLoaded', function() {
+            const newTaskForm = document.getElementById('newTaskForm');
+            if (!newTaskForm) return;
+
+            newTaskForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const taskData = {
+                    title: document.getElementById('taskTitle').value,
+                    project_id: document.getElementById('taskProject').value,
+                    assigned_to: document.getElementById('taskAssignee').value || null,
+                    task_type: document.getElementById('taskType').value,
+                    priority: document.getElementById('taskPriority').value,
+                    due_date: document.getElementById('taskDueDate').value,
+                    estimated_hours: document.getElementById('taskEstimatedHours').value,
+                    description: document.getElementById('taskDescription').value
+                };
+
+                // Basic validation
+                if (!taskData.title || !taskData.project_id || !taskData.due_date || !taskData.estimated_hours) {
+                    alert('Please fill required fields: Title, Project, Due Date, Estimated Hours');
+                    return;
+                }
+
+                try {
+                    const resp = await fetch("{% url 'create_task_api' %}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCSRFToken()
+                        },
+                        body: JSON.stringify(taskData)
+                    });
+
+                    const result = await resp.json();
+                    if (result.success) {
+                        // Close modal and reload to show created tasks
+                        hideModal(document.getElementById('newTaskModal'));
+                        location.reload();
+                    } else {
+                        alert('Error creating task: ' + (result.error || result.message));
+                    }
+                } catch (err) {
+                    console.error('Create task error', err);
+                    alert('Network error while creating task');
+                }
+            });
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
