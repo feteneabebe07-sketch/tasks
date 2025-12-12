@@ -37,6 +37,31 @@ RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
+# When behind a proxy (Render) ensure Django knows requests are HTTPS
+# Render sets the X-Forwarded-Proto header; tell Django to trust it
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Cookies and CSRF settings for production
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+
+# Build CSRF_TRUSTED_ORIGINS from env or ALLOWED_HOSTS so HTTPS referrers are accepted
+_csrf_env = os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').strip()
+if _csrf_env:
+    CSRF_TRUSTED_ORIGINS = [u.strip() for u in _csrf_env.split(',') if u.strip()]
+else:
+    # derive https origins from ALLOWED_HOSTS
+    CSRF_TRUSTED_ORIGINS = [f"https://{h}" for h in ALLOWED_HOSTS if h]
+
+# Optional security hardening in production
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', 3600))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
 
 # Application definition
 
