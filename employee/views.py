@@ -12,7 +12,14 @@ from core.models import (
 from core.models import Comment
 from core.models import Subtask
 import json
-
+def get_user_websocket_url(request):
+    """Get WebSocket URL for the current user"""
+    if request.is_secure():
+        ws_scheme = "wss://"
+    else:
+        ws_scheme = "ws://"
+    
+    return f"{ws_scheme}{request.get_host()}/ws/messages/"
 @login_required
 def developer_dashboard(request):
     """Developer dashboard view"""
