@@ -37,6 +37,7 @@ urlpatterns = [
     path('messages/get-conversation/', views.get_conversation, name='get_conversation'),
     path('messages/get-new-messages/', views.get_new_messages, name='get_new_messages'),
     path('messages/mark-read/', views.mark_messages_read, name='mark_messages_read'),
+    path('messages/unread-count/', views.get_unread_count, name='get_unread_count'),
     
     # Dashboard quick message (separate from messages page)
     path('dashboard/message/', views.send_quick_message, name='send_quick_message'),  # New URL for dashboard
