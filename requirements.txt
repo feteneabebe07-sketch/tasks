@@ -8,3 +8,4 @@ channels
 channels_redis
 redis
 daphne
+pillow
