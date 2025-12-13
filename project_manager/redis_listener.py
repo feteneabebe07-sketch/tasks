@@ -1,10 +1,12 @@
 # pm/redis_listener.py
 import json
 import redis
+import os
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
-redis_client = redis.Redis(host='172.21.28.17', port=6379, db=0)
+_redis_url = os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/0')
+redis_client = redis.from_url(_redis_url)
 channel_layer = get_channel_layer()
 
 def listen_for_messages():

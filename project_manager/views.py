@@ -1846,11 +1846,13 @@ def get_task_details_api(request, task_id):
 from datetime import datetime, timedelta
 import json
 import redis
+import os
 from django.db.models import Q, Count, Max
 from django.core.paginator import Paginator
 
 # Redis connection
-redis_client = redis.Redis(host='172.21.28.17', port=6379, db=0)
+_redis_url = os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/0')
+redis_client = redis.from_url(_redis_url)
 
 @login_required
 @user_passes_test(is_project_manager, login_url='/login/')

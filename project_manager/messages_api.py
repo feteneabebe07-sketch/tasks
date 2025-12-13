@@ -1,6 +1,7 @@
 # pm/messages_api.py
 import json
 import redis
+import os
 from datetime import datetime
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
@@ -11,7 +12,8 @@ from django.utils import timezone
 from core.models import User, EmployeeProfile, Message,Project, ProjectMember
 
 # Redis connection
-redis_client = redis.Redis(host='172.21.28.17', port=6379, db=0)
+_redis_url = os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/0')
+redis_client = redis.from_url(_redis_url)
 
 @login_required
 @require_GET

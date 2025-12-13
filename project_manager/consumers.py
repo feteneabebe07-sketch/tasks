@@ -1,6 +1,7 @@
 # pm/consumers.py
 import json
 import redis
+import os
 import logging
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
@@ -10,8 +11,9 @@ from django.utils import timezone
 # Logger for consumer debugging
 logger = logging.getLogger(__name__)
 
-# Redis connection
-redis_client = redis.Redis(host='172.21.28.17', port=6379, db=0)
+# Redis connection (use REDIS_URL env var in production)
+_redis_url = os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/0')
+redis_client = redis.from_url(_redis_url)
 
 class MessageConsumer(AsyncWebsocketConsumer):
     async def connect(self):
