@@ -20,6 +20,14 @@ from core.models import (
     TimeLog, Notification, StandupUpdate
 )
 from .pm_helpers import calculate_member_task_statuses
+def get_user_websocket_url(request):
+    """Get WebSocket URL for the current user"""
+    if request.is_secure():
+        ws_scheme = "wss://"
+    else:
+        ws_scheme = "ws://"
+    
+    return f"{ws_scheme}{request.get_host()}/ws/messages/"
 
 def is_project_manager(user):
     return user.is_authenticated and (user.role == 'pm' or user.role == 'admin')
