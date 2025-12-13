@@ -129,7 +129,7 @@
                         <div class="ml-3 flex-1">
                             <div class="flex justify-between items-start">
                                 <h3 class="font-medium text-ink-black">{{ conv.name }}</h3>
-                                <span class="text-xs text-gray-500">{{ conv.last_message_time|timesince }} ago</span>
+                                <span class="text-xs text-gray-500">     {% if conv.last_message_time %}         {{ conv.last_message_time|timesince }} ago     {% else %}         Just now     {% endif %} </span>
                             </div>
                             <p class="text-sm text-gray-600 truncate">{{ conv.last_message|truncatechars:40 }}</p>
                             <div class="flex justify-between items-center mt-1">
