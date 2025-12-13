@@ -1877,9 +1877,10 @@ def pm_messages(request):
     ).distinct().order_by('-created_at')
     
     # Group by conversation (other user)
-    conversations = {}
+    conversations = []
     
-    logger = logging.getLogger(__name__)
+    # Get unique users from messages
+    users_dict = {}
     for msg in messages:
         try:
             # Determine the other user in conversation
@@ -1889,62 +1890,67 @@ def pm_messages(request):
             else:
                 other_user = msg.sender
 
-            if not other_user:
+            if not other_user or other_user.id in users_dict:
                 continue
 
-            # Get employee profile for the other user
+            # Get employee profile
             employee = EmployeeProfile.objects.filter(user=other_user).first()
 
-            # Only add once per other_user
-            if other_user.id in conversations:
-                continue
+            # Get last message between users
+            last_message = Message.objects.filter(
+                Q(sender=current_user, recipients=other_user, message_type='direct') |
+                Q(sender=other_user, recipients=current_user, message_type='direct')
+            ).order_by('-created_at').first()
 
-            try:
-                # Safe online/last_seen handling
-                is_online = bool(redis_client.exists(f'user_online_{other_user.id}'))
-                last_seen_raw = redis_client.get(f'user_last_seen_{other_user.id}')
-                if isinstance(last_seen_raw, (bytes, bytearray)):
-                    last_seen = last_seen_raw.decode('utf-8', errors='ignore')
-                else:
-                    last_seen = last_seen_raw
+            # Count unread messages
+            unread_count = Message.objects.filter(
+                sender=other_user,
+                recipients=current_user,
+                is_read=False,
+                message_type='direct'
+            ).count()
 
-                # Safe message content
-                content = msg.content or ''
-                if len(content) > 50:
-                    last_message = content[:50] + '...'
-                else:
-                    last_message = content
+            # Get user initials
+            initials = get_user_initials(other_user)
+            
+            # Get color
+            colors = ['dark-teal', 'dark-cyan', 'golden-orange', 'rusty-spice', 'oxidized-iron', 'brown-red']
+            color = f"bg-{colors[other_user.id % len(colors)]}"
 
-                unread_count = Message.objects.filter(
-                    sender=other_user,
-                    recipients=current_user,
-                    is_read=False,
-                    message_type='direct'
-                ).count()
+            # Get last message content
+            last_message_content = ""
+            if last_message:
+                last_message_content = last_message.content
+                if len(last_message_content) > 50:
+                    last_message_content = last_message_content[:50] + '...'
 
-                conversations[other_user.id] = {
-                    'user_id': other_user.id,
-                    'name': other_user.get_full_name(),
-                    'initials': f"{other_user.first_name[0]}{other_user.last_name[0]}" if other_user.first_name and other_user.last_name else other_user.username[:2].upper(),
-                    'job_position': getattr(employee, 'job_position', 'Team Member') if employee else 'Team Member',
-                    'department': employee.department.name if employee and employee.department else 'No Department',
-                    'last_message': last_message,
-                    'last_message_time': format_message_time(msg.created_at),
-                    'unread_count': unread_count,
-                    'is_online': is_online,
-                    'last_seen': last_seen,
-                    'avatar_color': get_user_color(other_user.id),
-                }
-            except Exception:
-                logger.exception('Failed to build conversation entry for user %s', getattr(other_user, 'id', None))
-                continue
-        except Exception:
+            # Create conversation entry
+            conversations.append({
+                'id': f"conv_{current_user.id}_{other_user.id}",
+                'other_user': other_user,
+                'name': other_user.get_full_name() or other_user.username,
+                'initials': initials,
+                'color': color,
+                'job_position': employee.job_position if employee else 'Team Member',
+                'last_message': last_message_content,
+                'last_message_time': last_message.created_at if last_message else today,  # Make sure this is datetime
+                'unread_count': unread_count,
+                'unread': unread_count > 0,
+                'is_online': False,  # You can implement online status if needed
+            })
+
+            users_dict[other_user.id] = True
+
+        except Exception as e:
             logger.exception('Error processing message id=%s', getattr(msg, 'id', None))
             continue
     
-    # Convert to list and sort by last message time
-    conversations_list = list(conversations.values())
-    conversations_list.sort(key=lambda x: x['last_message_time'], reverse=True)
+    # Sort conversations by last message time
+    conversations.sort(key=lambda x: x['last_message_time'], reverse=True)
+    
+    # Mark first conversation as active if there are any
+    if conversations:
+        conversations[0]['active'] = True
     
     # Get managed projects for team members
     managed_projects = Project.objects.filter(project_manager=current_user)
@@ -1959,36 +1965,31 @@ def pm_messages(request):
         
         for member in project_members:
             user = member.employee.user
-            if user.id != current_user.id:
-                # Check if already in team_members
-                if not any(m['user_id'] == user.id for m in team_members):
-                    # Check if there's an existing conversation
-                    has_conversation = any(c['user_id'] == user.id for c in conversations_list)
-                    
-                    # Check online status
-                    is_online = redis_client.exists(f'user_online_{user.id}')
-                    
-                    team_members.append({
-                        'user_id': user.id,
-                        'name': user.get_full_name(),
-                        'initials': f"{user.first_name[0]}{user.last_name[0]}" if user.first_name and user.last_name else user.username[:2].upper(),
-                        'job_position': member.employee.job_position,
-                        'department': member.employee.department.name if member.employee.department else 'No Department',
-                        'role': member.get_role_display(),
-                        'project_name': project.name,
-                        'has_conversation': has_conversation,
-                        'is_online': is_online,
-                        'avatar_color': get_user_color(user.id),
-                    })
+            if user.id != current_user.id and not any(m['other_user'].id == user.id for m in conversations):
+                team_members.append({
+                    'id': user.id,
+                    'name': user.get_full_name() or user.username,
+                    'initials': get_user_initials(user),
+                    'color': f"bg-{colors[user.id % len(colors)]}",
+                    'job_position': member.employee.job_position,
+                    'project_name': project.name,
+                })
     
     context = {
         'user': current_user,
-        'conversations': conversations_list,
+        'conversations': conversations,
         'team_members': team_members,
         'today': today,
     }
     
     return render(request, 'pm/messages.html', context)
+def get_user_initials(user):
+    """Get user initials for avatar"""
+    if user.get_full_name():
+        names = user.get_full_name().split()
+        if len(names) >= 2:
+            return f"{names[0][0]}{names[1][0]}".upper()
+    return user.username[:2].upper()
 
 # Helper functions
 def format_message_time(timestamp):
