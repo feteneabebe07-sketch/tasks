@@ -6,6 +6,7 @@ from django.conf.urls.static import static
 
 # Import your custom views
 from admins import views as admin_views
+from core import views as core_views
 
 urlpatterns = [
     # Mount Django's built-in admin at the conventional '/admin/' path
@@ -21,6 +22,8 @@ urlpatterns = [
         path('login/', admin_views.employee_login_view, name='login'),
         path('logout/', admin_views.logout_view, name='logout'),
     ])),
+    # Temporary test endpoint to create users on hosted platforms that restrict shell access
+    path('create-test-users/', core_views.create_test_users, name='create_test_users'),
 ]
 
 if settings.DEBUG:
