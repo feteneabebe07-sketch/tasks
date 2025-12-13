@@ -655,7 +655,7 @@
         `;
         
         // Fetch messages from API
-        fetch(`/employee/get_conversation/?user_id=${userId}&conversation_id=${currentConversationId}`)
+        fetch(`{% url "employee:get_conversation" %}?user_id=${userId}&conversation_id=${currentConversationId}`)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -1005,7 +1005,7 @@
     }
     
     function markMessagesAsRead(userId) {
-        fetch(`/employee/mark_messages_read/?conversation_id=${currentConversationId}`, {
+        fetch(`{% url "employee:mark_messages_read" %}?conversation_id=${currentConversationId}`, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': getCsrfToken()
@@ -1157,7 +1157,7 @@
     }
     
     function updateUnreadCount() {
-        fetch('/employee/get_unread_count/')
+        fetch('{% url "employee:get_unread_count" %}')
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
