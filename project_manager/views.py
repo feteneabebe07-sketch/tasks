@@ -1847,6 +1847,7 @@ from datetime import datetime, timedelta
 import json
 import redis
 import os
+import logging
 from django.db.models import Q, Count, Max
 from django.core.paginator import Paginator
 
@@ -1870,46 +1871,68 @@ def pm_messages(request):
     # Group by conversation (other user)
     conversations = {}
     
+    logger = logging.getLogger(__name__)
     for msg in messages:
-        # Determine the other user in conversation
-        if msg.sender == current_user:
-            # Get first recipient (for direct messages, there should be only one)
-            recipient = msg.recipients.first()
-            if recipient:
-                other_user = recipient
-        else:
-            other_user = msg.sender
-        
-        if other_user:
+        try:
+            # Determine the other user in conversation
+            if msg.sender == current_user:
+                recipient = msg.recipients.first()
+                other_user = recipient if recipient else None
+            else:
+                other_user = msg.sender
+
+            if not other_user:
+                continue
+
             # Get employee profile for the other user
             employee = EmployeeProfile.objects.filter(user=other_user).first()
-            
-            if other_user.id not in conversations:
-                # Check online status from Redis
-                is_online = redis_client.exists(f'user_online_{other_user.id}')
-                last_seen = redis_client.get(f'user_last_seen_{other_user.id}')
-                
-                # Get unread count
+
+            # Only add once per other_user
+            if other_user.id in conversations:
+                continue
+
+            try:
+                # Safe online/last_seen handling
+                is_online = bool(redis_client.exists(f'user_online_{other_user.id}'))
+                last_seen_raw = redis_client.get(f'user_last_seen_{other_user.id}')
+                if isinstance(last_seen_raw, (bytes, bytearray)):
+                    last_seen = last_seen_raw.decode('utf-8', errors='ignore')
+                else:
+                    last_seen = last_seen_raw
+
+                # Safe message content
+                content = msg.content or ''
+                if len(content) > 50:
+                    last_message = content[:50] + '...'
+                else:
+                    last_message = content
+
                 unread_count = Message.objects.filter(
                     sender=other_user,
                     recipients=current_user,
                     is_read=False,
                     message_type='direct'
                 ).count()
-                
+
                 conversations[other_user.id] = {
                     'user_id': other_user.id,
                     'name': other_user.get_full_name(),
                     'initials': f"{other_user.first_name[0]}{other_user.last_name[0]}" if other_user.first_name and other_user.last_name else other_user.username[:2].upper(),
-                    'job_position': employee.job_position if employee else 'Team Member',
+                    'job_position': getattr(employee, 'job_position', 'Team Member') if employee else 'Team Member',
                     'department': employee.department.name if employee and employee.department else 'No Department',
-                    'last_message': msg.content[:50] + '...' if len(msg.content) > 50 else msg.content,
+                    'last_message': last_message,
                     'last_message_time': format_message_time(msg.created_at),
                     'unread_count': unread_count,
                     'is_online': is_online,
-                    'last_seen': last_seen.decode() if last_seen else None,
+                    'last_seen': last_seen,
                     'avatar_color': get_user_color(other_user.id),
                 }
+            except Exception:
+                logger.exception('Failed to build conversation entry for user %s', getattr(other_user, 'id', None))
+                continue
+        except Exception:
+            logger.exception('Error processing message id=%s', getattr(msg, 'id', None))
+            continue
     
     # Convert to list and sort by last message time
     conversations_list = list(conversations.values())
