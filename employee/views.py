@@ -1279,3 +1279,15 @@ def mark_messages_read(request):
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
+
+
+
+@login_required
+def get_unread_count(request):
+    """Return the unread messages count for the current user (JSON)."""
+    try:
+        count = Message.objects.filter(recipients=request.user, is_read=False).count()
+        return JsonResponse({'success': True, 'unread_count': count})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
